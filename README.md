@@ -1,1 +1,2 @@
-# project_2_xy
+### Computational Physics b
+# Monte Carlo simulation of XY model
