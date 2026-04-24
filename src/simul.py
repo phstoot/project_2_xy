@@ -60,14 +60,13 @@ class MonteCarlo_XY:
     
 
     def _total_energy(self):
-        
         pass
     
     def _calculate_magnetization(self):
         return 
     
     def _calculate_autocorrelation(self):
-    
+        pass
     
     def calculate_specific_heat(self):
         return
