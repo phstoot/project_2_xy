@@ -31,6 +31,23 @@ class MonteCarlo_XY:
         """Do a static visualisation of current system state
         """
 
-    def step(self):
+    def step(self): 
         pass
+    
+
+    def _total_energy(self):
+        
+        pass
+    
+    def _calculate_magnetization(self):
+        return 
+    
+    def _calculate_autocorrelation(self):
+    
+    
+    def calculate_specific_heat(self):
+        return
+    
+    def calculate_susceptibility(self):
+        return
 
