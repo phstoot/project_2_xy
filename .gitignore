@@ -1,1 +1,7 @@
 README.md
+scripts/__pycache__
+data/
+*.pdf
+*.png
+__pychache__
+*.ipynb_checkpoints
