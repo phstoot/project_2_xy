@@ -9,7 +9,10 @@ Output:
 """
 
 # Imports
-from project_2_xy.src.utils import spacer, section
+import sys
+sys.path.append('project_2_xy')
+from src.utils import spacer, section
+from time import sleep
 
 
 # Functions
