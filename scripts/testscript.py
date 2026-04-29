@@ -1,6 +1,6 @@
 import sys
 sys.path.append('project_2_xy')
-import src.simul as mod
+# import src.simul as mod
 
 
 import numpy as np
@@ -15,7 +15,7 @@ import simul # src is added to path so direct import
 
 
 if __name__ == '__main__':
-    test = mod.MonteCarlo_XY(10, 1)
+    test = simul.MonteCarlo_XY(10, 1)
     print(test.spins)
     print(np.rad2deg(test.spins))
     test.static_plot()
