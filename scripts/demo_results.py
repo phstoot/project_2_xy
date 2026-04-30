@@ -9,10 +9,9 @@ Output:
 """
 
 # Imports
-import sys
-sys.path.append('project_2_xy') ### NEED SOME better method
 from src.utils import spacer, section
 from time import sleep
+import src.simul as simul
 
 
 # Functions
