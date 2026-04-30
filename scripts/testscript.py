@@ -1,26 +1,19 @@
-import sys
-sys.path.append('project_2_xy')
-# import src.simul as mod
-
-
 import numpy as np
 import matplotlib.pyplot as plt
-from pathlib import Path
-
-# Add src directory to path
-src_dir = Path(__file__).resolve().parent.parent / "src"
-sys.path.insert(0, str(src_dir))
-
-import simul # src is added to path so direct import
-
+import src.simul as simul
 
 if __name__ == '__main__':
-    test = simul.MonteCarlo_XY(10, 1)
-    print(test.spins)
-    print(np.rad2deg(test.spins))
-    test.static_plot()
-    
-    test.equilibrate(steps_between=100000)
-    test.static_plot() # Issue: Colour map suggests that arrows are well aligned, arrows themselves still seem to point in different directions.
-    
-    
+    temps = np.arange(0.5, 2.5, 0.2)
+    steps = 10**6 # watch out, may take a long time
+
+    for T in temps:
+        print(f'\nStarting sim for T = {T:.2f}...\n')
+        sim = simul.MonteCarlo_XY(100, T, start='hot') # type: ignore
+        sim.run(steps=steps, store=True)
+        sim.static_image()
+        plt.plot(sim.magn_hist)
+        plt.xlabel('t (steps)')
+        plt.ylabel('m (M/L^2)')
+        plt.xlim(0,steps)
+        plt.title('Magnetization of XY model')
+        plt.savefig(f'results/magn_{T}.pdf')
