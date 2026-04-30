@@ -1,7 +1,8 @@
+from matplotlib.widgets import EllipseSelector
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-import tqdm
+from tqdm import tqdm
 
 class MonteCarlo_XY:
     """_summary_
@@ -10,6 +11,9 @@ class MonteCarlo_XY:
             self,
             length_xy : int = 4,
             temperature : float = 1,
+            k_B : float = 1,
+            start: str = 'cold' # either cold or hot
+            # TODO: initialize : str = 'random' or 'aligned'
             ):
         """Initializes the simulation with given parameters.
 
@@ -23,11 +27,13 @@ class MonteCarlo_XY:
         
         self.length_xy = length_xy
         self.temperature = temperature
-        self.spins = self._init_spins()
+        self.k_B = k_B
+        self.spins = self._init_spins(start)
         self._status = 'initialized'
         
-        
+        self.beta = 1 / (self.k_B * self.temperature)
         self.spins_hist: list = []
+        self.magn_hist: list = []
         self.saved_index_hist: list = [] # IF NOT USED, REMOVE LATER
         self.stepcount: int = 0
         
@@ -39,71 +45,109 @@ class MonteCarlo_XY:
             f"status={self._status}"
             )
 
-    def _init_spins(self):
-        spins = np.random.uniform(-np.pi, np.pi, (self.length_xy, self.length_xy))
+    def _init_spins(self, start):
+        """Private method to initialize XY model with either random spins (start='hot') or aligned spins (start='cold')
+        """
+        if start == 'hot':
+            spins = np.random.uniform(0, 2*np.pi, (self.length_xy, self.length_xy))
+        elif start == 'cold':
+            spins = np.full((self.length_xy, self.length_xy), (4/3)*np.pi)
+        else:
+            raise ValueError("choose 'hot' or 'cold' to start")
         return spins
 
     def static_plot(self):
         """Do a static visualisation of current system state using plt.quiver
         """
+        #TODO now arrows at 0 are aligned on axis so only partly visible
         # create meshgrid for quiver
         X, Y = np.meshgrid(np.arange(self.length_xy), np.arange(self.length_xy)) #optional it says
-        # angles = np.rad2deg(self.spins)
-
         U = np.cos(self.spins)
         V = np.sin(self.spins)
-        fig, ax = plt.subplots(figsize=(10,10))
         
+        fig, ax = plt.subplots(figsize=(8,8))
         q = ax.quiver(
             X, Y, U, V,
             self.spins,
             cmap='hsv', 
-            clim=[-np.pi, np.pi],
+            clim=[0, 2*np.pi],
             pivot='mid',
             # scale_units='xy',      # Scale arrows relative to x,y axes
-            scale=self.length_xy / 2,             # Inverse scale factor (higher = shorter arrows)
-            width=0.15 / self.length_xy,           # Arrow shaft width
-            # headwidth=3,           # Head width as multiple of shaft width
-            # headlength=4,          # Head length as multiple of shaft width
-            # headaxislength=3.5,    # Head length at shaft intersection
+            scale= 0.9*self.length_xy,             # Inverse scale factor (higher = shorter arrows)
+            width= 0.2 / self.length_xy,           # Arrow shaft width
+            headwidth=2.8,           # Head width as multiple of shaft width
+            headlength=6,          # Head length as multiple of shaft width
+            headaxislength=5.6,    # Head length at shaft intersection
         )
-        plt.colorbar(q, label='Angle (radians)')
+        cbar = plt.colorbar(q, label='Angle (radians)', shrink=0.8, aspect=50)
+        ticks = [0, np.pi/2, np.pi, 3*np.pi/2, 2*np.pi]
+        labels = ['0', r'$\frac{1}{2}\pi$', r'$\pi$', r'$\frac{3}{2}\pi$', r'$2\pi$']
+        cbar.set_ticks(ticks, labels=labels, fontsize=14)
+
         ax.set_aspect('equal')
+        # ax.set_xlim(0, self.length_xy)
+        # ax.set_ylim(0, self.length_xy)
+        ax.margins(0)
+        ax.set_xticks([])
+        ax.set_yticks([]) 
         plt.tight_layout()
         plt.show()
+    
+    def static_image(self):
+        """Do a static image of current system state with spins as pixels.
+        """
+        fig, ax = plt.subplots(figsize=(8,8))
+        im = ax.imshow(
+            self.spins,
+            cmap='hsv',
+            clim=[0, 2*np.pi], 
+        )
+        plt.title(f'T = {self.temperature:.2f}')
+        ax.set_xticks([])
+        ax.set_yticks([]) 
+        # plt.show()
+        plt.savefig(f'results/im_T_{self.temperature}.pdf')
         
     def _propose_changed_index(self):
-        """Private method: Propose index of the spin that will be changed for the new state. Every index occurs with same probability."""
-        return np.random.randint(0,self.length_xy- 1), np.random.randint(0,self.length_xy- 1)
+        """Private method: Propose index of the spin that will be changed for the new state. 
+        Every index occurs with same probability."""
+        return np.random.randint(0, self.length_xy), np.random.randint(0, self.length_xy)
     
-    def _propose_changed_theta(self, ind_x: int, ind_y):
+    def _propose_changed_theta(self, ind_x: int, ind_y: int):
         """Private method: Propose new theta for the inserted index."""
-        return self.spins[ind_x, ind_y] + np.random.uniform(-np.pi, np.pi) + np.pi % (2*np.pi) - np.pi
+        return (self.spins[ind_x, ind_y] + np.random.uniform(0, 2*np.pi)) % (2*np.pi)
     
     def acceptance_prob(self, energy_diff: float):
-        """Calculates acceptance probability as a function of energy difference between proposed and initial state. J = beta = 1"""
+        """Calculates acceptance probability as a function of energy difference between 
+        proposed and initial state. J = k_B = 1"""
         # print(min(1.0, math.exp(-energy_diff)))
-        return min(1.0, math.exp(-energy_diff))
-
-    def _step(self, alg: str = "verlet"):        
-        """Private method: Propose and accept new state over Metropolis algorithm.
-        Minimum image convention is applied."""
-        changed_spin = self._propose_changed_index()
-        new_theta = self._propose_changed_theta(ind_x = changed_spin[0], ind_y = changed_spin[1])
         
+        boltzmann_weight = np.exp(-self.beta*energy_diff)
+        return min(1.0, boltzmann_weight)
+
+    def _step(self):        
+        """Private method: Propose and accept new state over Metropolis Hastings algorithm.
+        Minimum image convention is applied."""
+        # propose new state
+        x, y = self._propose_changed_index()
+        new_theta = self._propose_changed_theta(x, y)
+        
+        # calculate energy difference
+        neighbours = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         energy_diff = 0
-        index_shift = (-1,1)
-        for dx in index_shift:
-            for dy in index_shift:
-                initial_theta = self.spins[changed_spin[0], changed_spin[1]]
-                neighbour_theta = self.spins[np.mod(changed_spin[0] + dx,self.length_xy), np.mod(changed_spin[1] + dy,self.length_xy)]
-                energy_diff += np.cos(neighbour_theta- new_theta)
-                energy_diff -= np.cos(neighbour_theta - initial_theta)
+        for dx, dy in neighbours:
+                nx = (x + dx) % self.length_xy
+                ny = (y + dy) % self.length_xy
+                
+                initial_theta = self.spins[x,y] 
+                neighbour_theta = self.spins[nx, ny]
+                
+                energy_diff += -np.cos(new_theta - neighbour_theta) + np.cos(initial_theta - neighbour_theta) # dE = final - initial
                 
         # Acceptance stage:
         P = self.acceptance_prob(energy_diff=energy_diff)
         if np.random.rand() < P:
-            self.spins[changed_spin[0], changed_spin[1]] = new_theta        
+            self.spins[x,y] = new_theta        
         
     def _run(self, steps: int = 1000):
         """Private method for running the simulation without storing history and without status checks,
@@ -112,27 +156,38 @@ class MonteCarlo_XY:
         for step in range(steps):
             self._step()
             
-    def equilibrate(
-        self, steps_between = 1000
-    ):
-        """(Obviously needs some actual algorithm)"""
+    # TODO not sure if we need this function, but we probably do looking at milestone 2.
+    # def equilibrate(
+    #     self, steps_between = 1000
+    # ):
+    #     """(Obviously needs some actual algorithm)"""
         
-        if self._status == "equilibrated":
-            raise RuntimeError(
-                "System is already in equilibrium. Call run() to run simulation."
-            )
-        if self._status == "completed":
-            raise RuntimeError("run() already called. Call reset() to start fresh.")
+    #     if self._status == "equilibrated":
+    #         raise RuntimeError(
+    #             "System is already in equilibrium. Call run() to run simulation."
+    #         )
+    #     if self._status == "completed":
+    #         raise RuntimeError("run() already called. Call reset() to start fresh.")
     
-        self._run(steps=steps_between)
+    #     self._run(steps=steps_between)
         
-        
+    def run(self, steps: int = 1000, store=True):
+        """Run the simulation over Monte Carlo steps. If store=True, magnetization and other properties (TO IMPLEMENT) are stored in arrays to plot.
+        """
+        for step in tqdm(range(steps)):
+            self.magn_hist.append(self._calculate_magnetization())
+            self._step()
+            
+
 
     def _total_energy(self):
+
         pass
     
     def _calculate_magnetization(self):
-        return 
+        """Calculate magnetization per spin m = M/N^2 where M = sum(spins).
+        """
+        return np.sum(self.spins) / self.length_xy**2 
     
     def _calculate_autocorrelation(self):
         pass
