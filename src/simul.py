@@ -101,6 +101,7 @@ class MonteCarlo_XY:
             self.spins,
             cmap='hsv',
             clim=[0, 2*np.pi], 
+            interpolation='gaussian' # no kernel
         )
         plt.title(f'T = {self.temperature:.3g}')
         ax.set_xticks([])
@@ -122,11 +123,9 @@ class MonteCarlo_XY:
     
     def acceptance_prob(self, energy_diff: float):
         """Calculates acceptance probability as a function of energy difference between 
-        proposed and initial state. J = k_B = 1"""
+        proposed and initial state. J = k_B = 1. Returns acceptance probability as boltzmann weight"""
         exponent = min(0, -self.beta * energy_diff) # take care of large numbers resulting in overflow error
-
-        boltzmann_weight = np.exp(exponent)
-        return boltzmann_weight
+        return np.exp(exponent)
 
     def _step(self):        
         """Private method: Propose and accept new state over Metropolis Hastings algorithm.
@@ -182,6 +181,59 @@ class MonteCarlo_XY:
                 self.magn_hist.append(self._calculate_magnetization())
             self._step()
             
+    def run_opt(self, steps: int = 1000, store: bool=True, interval: int = 100):
+        """Optimized run method to run the simulation for a number of steps in a Monte Carlo Markov Chain using 
+
+        Parameters
+        ----------
+        steps : int, optional
+            _description_, by default 1000
+        store : bool, optional
+            _description_, by default True
+        interval : int, optional
+            _description_, by default 100
+        """
+        # Pre-generate all random numbers at once
+        rng = np.random.default_rng()  # modern API, apparently faster than np.random
+        xs = rng.integers(0, self.length_xy, size=steps)
+        ys = rng.integers(0, self.length_xy, size=steps)
+        deltas = rng.uniform(0, 2 * np.pi, size=steps)
+        accepts = rng.random(size=steps)  # for the acceptance draw
+    
+        for i in tqdm(range(steps)):
+            if store and i % interval == 0: # sample at intervals
+                self.magn_hist.append(self._calculate_magnetization())
+            self._step_opt(xs[i], ys[i], deltas[i], accepts[i])
+
+    def _step_opt(self, x, y, delta, accept):
+        """Private optimized step function implementing Metropolis Hastings algorithm. 
+        All random numbers for a run are generated in run method beforehand, and fed into the step function to avoid loop overhead. 
+        Periodic boundary conditions are applied.
+
+        Parameters
+        ----------
+        x : int
+            the x index of the changed spin
+        y : int
+            the y index of the changed spin
+        delta : float
+            the spin change
+        accept : float
+            random draw for acceptance logic
+        """
+        # calculate energy difference
+        neighbours = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        initial_theta = self.spins[x,y] 
+        energy_diff = 0 # unnecessary to define, but technically it could become unbound in acceptance block, if for some reason loop doesn't work
+        for dx, dy in neighbours: #TODO: we can again use a vectorized operation calling all neighbours at once, eliminating for loop
+                nx = (x + dx) % self.length_xy
+                ny = (y + dy) % self.length_xy
+                neighbour_theta = self.spins[nx, ny]
+                energy_diff = -np.cos(delta - neighbour_theta) + np.cos(initial_theta - neighbour_theta) # dE = final - initial
+                
+        # Acceptance stage:
+        if accept < self.acceptance_prob(energy_diff=energy_diff):
+            self.spins[x,y] = delta
 
 
     def _total_energy(self):
