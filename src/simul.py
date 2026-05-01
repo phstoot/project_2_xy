@@ -191,7 +191,7 @@ class MonteCarlo_XY:
                 nx = (x + dx) % self.length_xy
                 ny = (y + dy) % self.length_xy
                 neighbour_theta = self.spins[nx, ny]
-                energy_diff = -np.cos(delta - neighbour_theta) + np.cos(initial_theta - neighbour_theta) # dE = final - initial
+                energy_diff += -np.cos(delta - neighbour_theta) + np.cos(initial_theta - neighbour_theta) # dE = final - initial
                 
         # Acceptance stage:
         if accept < self.acceptance_prob(energy_diff=energy_diff):
