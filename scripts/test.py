@@ -1,3 +1,6 @@
+######################################
+# simple test script, free to change #
+######################################
 import numpy as np
 import matplotlib.pyplot as plt
 import src.simul as simul
@@ -7,7 +10,7 @@ if __name__ == '__main__':
     sweeps = 2000 # 5 million markov steps
     print(f'\nStarting sim..')
     sim = simul.MonteCarlo_XY(50, 1, start='hot')
-    sim.run(sweeps=sweeps, store=True)
+    sim.run(sweeps=sweeps, store=True, interval=20)
     print('done')
     # sim.static_image()
     # plt.plot(sim.magn_hist)
