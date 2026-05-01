@@ -101,7 +101,7 @@ class MonteCarlo_XY:
             self.spins,
             cmap='hsv',
             clim=[0, 2*np.pi], 
-            interpolation='gaussian' # no kernel
+            interpolation='nearest' # no kernel
         )
         plt.title(f'T = {self.temperature:.3g}')
         ax.set_xticks([])
@@ -127,36 +127,6 @@ class MonteCarlo_XY:
         exponent = min(0, -self.beta * energy_diff) # take care of large numbers resulting in overflow error
         return np.exp(exponent)
 
-    def _step(self):        
-        """Private method: Propose and accept new state over Metropolis Hastings algorithm.
-        Minimum image convention is applied."""
-        # propose new state
-        x, y = self._propose_changed_index() # let's get rid of the extra functions and just do that here (ask matthieu which one faster)
-        new_theta = self._propose_changed_theta(x, y)
-        
-        # calculate energy difference
-        neighbours = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        energy_diff = 0
-        for dx, dy in neighbours:
-                nx = (x + dx) % self.length_xy
-                ny = (y + dy) % self.length_xy
-                
-                initial_theta = self.spins[x,y] 
-                neighbour_theta = self.spins[nx, ny]
-                
-                energy_diff += -np.cos(new_theta - neighbour_theta) + np.cos(initial_theta - neighbour_theta) # dE = final - initial
-                
-        # Acceptance stage:
-        P = self.acceptance_prob(energy_diff=energy_diff)
-        if np.random.rand() < P:
-            self.spins[x,y] = new_theta        
-        
-    def _run(self, steps: int = 1000):
-        """Private method for running the simulation without storing history and without status checks,
-        used in equilibrate().
-        """
-        for step in range(steps):
-            self._step()
             
     # TODO not sure if we need this function, but we probably do looking at milestone 2.
     # def equilibrate(
@@ -172,16 +142,8 @@ class MonteCarlo_XY:
     #         raise RuntimeError("run() already called. Call reset() to start fresh.")
     
     #     self._run(steps=steps_between)
-        
-    def run(self, steps: int = 1000, store: bool=True, interval: int =100):
-        """Run the simulation over Monte Carlo steps. If store=True, magnetization and other properties (TO IMPLEMENT) are stored in arrays to plot.
-        """
-        for step in tqdm(range(steps)):
-            if store and step % interval == 0:
-                self.magn_hist.append(self._calculate_magnetization())
-            self._step()
             
-    def run_opt(self, steps: int = 1000, store: bool=True, interval: int = 100):
+    def run(self, steps: int = 1000, store: bool=True, interval: int = 100):
         """Optimized run method to run the simulation for a number of steps in a Monte Carlo Markov Chain using 
 
         Parameters
@@ -203,9 +165,9 @@ class MonteCarlo_XY:
         for i in tqdm(range(steps)):
             if store and i % interval == 0: # sample at intervals
                 self.magn_hist.append(self._calculate_magnetization())
-            self._step_opt(xs[i], ys[i], deltas[i], accepts[i])
+            self._step(xs[i], ys[i], deltas[i], accepts[i])
 
-    def _step_opt(self, x, y, delta, accept):
+    def _step(self, x, y, delta, accept):
         """Private optimized step function implementing Metropolis Hastings algorithm. 
         All random numbers for a run are generated in run method beforehand, and fed into the step function to avoid loop overhead. 
         Periodic boundary conditions are applied.
@@ -225,7 +187,7 @@ class MonteCarlo_XY:
         neighbours = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         initial_theta = self.spins[x,y] 
         energy_diff = 0 # unnecessary to define, but technically it could become unbound in acceptance block, if for some reason loop doesn't work
-        for dx, dy in neighbours: #TODO: we can again use a vectorized operation calling all neighbours at once, eliminating for loop
+        for dx, dy in neighbours: 
                 nx = (x + dx) % self.length_xy
                 ny = (y + dy) % self.length_xy
                 neighbour_theta = self.spins[nx, ny]

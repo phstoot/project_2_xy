@@ -7,3 +7,4 @@ data/
 __pychache__
 *.ipynb_checkpoints
 .DS_store
+*.prof
