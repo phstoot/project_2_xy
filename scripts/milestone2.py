@@ -18,13 +18,15 @@ def main():
         hot = simul.MonteCarlo_XY(N, temps[i], start='hot')
         print(f'\nStarting sim: N = {N}, T = {temps[i]}, hot start, length = {sweeps[i]} sweeps...')
         hot.run(sweeps=sweeps[i], store=True, interval=sample_interval[i])
-        np.save(f'data/spins_{N}_hotstart_T_{temps[i]}.npy', np.array(hot.spins_hist))
+        np.save(f'data/spins_{N}_T_{temps[i]}_hot.npy', np.array(hot.spins_hist))
+        np.save(f'data/magn_{N}_T_{temps[i]}_hot.npy', np.array(hot.magn_hist))
 
         # cold initial conditions
         cold = simul.MonteCarlo_XY(N, temps[i], start='cold')
         print(f'\nStarting sim: N = {N}, T = {temps[i]}, cold start, length = {sweeps[i]} sweeps...') 
         cold.run(sweeps=sweeps[i], store=True, interval=sample_interval[i])
-        np.save(f'data/spins_{N}_coldstart_T_{temps[i]}.npy', np.array(cold.spins_hist))
+        np.save(f'data/spins_{N}_T_{temps[i]}_cold.npy', np.array(cold.spins_hist))
+        np.save(f'data/magn_{N}_T_{temps[i]}_cold.npy', np.array(cold.magn_hist))
     print('Done, bye')
 
 
