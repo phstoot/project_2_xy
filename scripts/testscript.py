@@ -14,6 +14,7 @@ if __name__ == '__main__':
         plt.plot(sim.magn_hist)
         plt.xlabel('t (steps)')
         plt.ylabel('m (M/L^2)')
-        plt.xlim(0,steps)
+        # plt.xlim(0,steps)
         plt.title('Magnetization of XY model')
         plt.savefig(f'results/magn_{T}.pdf')
+        plt.close('all')

@@ -93,7 +93,7 @@ class MonteCarlo_XY:
         plt.tight_layout()
         plt.show()
     
-    def static_image(self):
+    def static_image(self, save=True):
         """Do a static image of current system state with spins as pixels.
         """
         fig, ax = plt.subplots(figsize=(8,8))
@@ -102,11 +102,14 @@ class MonteCarlo_XY:
             cmap='hsv',
             clim=[0, 2*np.pi], 
         )
-        plt.title(f'T = {self.temperature:.2f}')
+        plt.title(f'T = {self.temperature:.3g}')
         ax.set_xticks([])
         ax.set_yticks([]) 
-        # plt.show()
-        plt.savefig(f'results/im_T_{self.temperature}.pdf')
+        
+        if save == True:
+            plt.savefig(f'results/im_T_{self.temperature}.pdf')
+        plt.show()
+        plt.close('all')
         
     def _propose_changed_index(self):
         """Private method: Propose index of the spin that will be changed for the new state. 
@@ -120,16 +123,16 @@ class MonteCarlo_XY:
     def acceptance_prob(self, energy_diff: float):
         """Calculates acceptance probability as a function of energy difference between 
         proposed and initial state. J = k_B = 1"""
-        # print(min(1.0, math.exp(-energy_diff)))
-        
-        boltzmann_weight = np.exp(-self.beta*energy_diff)
-        return min(1.0, boltzmann_weight)
+        exponent = min(0, -self.beta * energy_diff) # take care of large numbers resulting in overflow error
+
+        boltzmann_weight = np.exp(exponent)
+        return boltzmann_weight
 
     def _step(self):        
         """Private method: Propose and accept new state over Metropolis Hastings algorithm.
         Minimum image convention is applied."""
         # propose new state
-        x, y = self._propose_changed_index()
+        x, y = self._propose_changed_index() # let's get rid of the extra functions and just do that here (ask matthieu which one faster)
         new_theta = self._propose_changed_theta(x, y)
         
         # calculate energy difference
@@ -171,11 +174,12 @@ class MonteCarlo_XY:
     
     #     self._run(steps=steps_between)
         
-    def run(self, steps: int = 1000, store=True):
+    def run(self, steps: int = 1000, store: bool=True, interval: int =100):
         """Run the simulation over Monte Carlo steps. If store=True, magnetization and other properties (TO IMPLEMENT) are stored in arrays to plot.
         """
         for step in tqdm(range(steps)):
-            self.magn_hist.append(self._calculate_magnetization())
+            if store and step % interval == 0:
+                self.magn_hist.append(self._calculate_magnetization())
             self._step()
             
 
@@ -187,7 +191,9 @@ class MonteCarlo_XY:
     def _calculate_magnetization(self):
         """Calculate magnetization per spin m = M/N^2 where M = sum(spins).
         """
-        return np.sum(self.spins) / self.length_xy**2 
+        M = np.abs(np.sum(np.exp(1j * self.spins)))
+        m = M / self.length_xy**2
+        return m
     
     def _calculate_autocorrelation(self):
         pass
