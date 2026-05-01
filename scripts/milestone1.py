@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import src.simul as simul
 
 
-if __name__ == '__main__':
+def main():
     temps = [0.5, 0.7, 0.9, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.5] # prevent weird floating point error in filenames
     steps = 10**6 # watch out, may take a long time
     sample_interval = 1000
@@ -49,3 +49,7 @@ if __name__ == '__main__':
             plt.close('all')
 
     print('done')
+
+
+if __name__ == '__main__':
+    main()
