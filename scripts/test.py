@@ -4,10 +4,10 @@ import src.simul as simul
 
 if __name__ == '__main__':
     # temps = np.arange(0.5, 2.5, 0.2)
-    steps = 10**6 # watch out, may take a long time
+    sweeps = 2000 # 5 million markov steps
     print(f'\nStarting sim..')
-    sim = simul.MonteCarlo_XY(100, 1, start='hot')
-    sim.run(steps=steps, store=True)
+    sim = simul.MonteCarlo_XY(50, 1, start='hot')
+    sim.run(sweeps=sweeps, store=True)
     print('done')
     # sim.static_image()
     # plt.plot(sim.magn_hist)

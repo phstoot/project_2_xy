@@ -8,3 +8,5 @@ __pychache__
 *.ipynb_checkpoints
 .DS_store
 *.prof
+*.zip
+*.npy

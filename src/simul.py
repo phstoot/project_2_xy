@@ -9,11 +9,10 @@ class MonteCarlo_XY:
     """
     def __init__(
             self,
-            length_xy : int = 4,
+            length_xy : int = 50,
             temperature : float = 1,
             k_B : float = 1,
             start: str = 'cold' # either cold or hot
-            # TODO: initialize : str = 'random' or 'aligned'
             ):
         """Initializes the simulation with given parameters.
 
@@ -94,7 +93,7 @@ class MonteCarlo_XY:
         plt.tight_layout()
         plt.show()
     
-    def static_image(self, save=True, fname='img.pdf'):
+    def static_image(self, show=True, save=False, fname='img.pdf'):
         """Do a static image of current system state with spins as pixels.
         """
         fig, ax = plt.subplots(figsize=(8,8))
@@ -110,15 +109,9 @@ class MonteCarlo_XY:
         
         if save == True:
             plt.savefig(fname)
-        # plt.show()
+        if show == True:
+            plt.show()
         plt.close('all')
-    
-    def acceptance_prob(self, energy_diff: float):
-        """Calculates acceptance probability as a function of energy difference between 
-        proposed and initial state. J = k_B = 1. Returns acceptance probability as boltzmann weight"""
-        exponent = min(0, -self.beta * energy_diff) # take care of large numbers resulting in overflow error
-        return np.exp(exponent)
-
             
     # TODO not sure if we need this function, but we probably do looking at milestone 2.
     # def equilibrate(
@@ -137,7 +130,7 @@ class MonteCarlo_XY:
 
     def _step(self, x, y, delta, accept):
         """Private optimized step function implementing Metropolis Hastings algorithm. 
-        All random numbers for a run are generated in run method beforehand, and fed into the step function to avoid loop overhead. 
+        All random numbers for a run are generated in run method beforehand, and fed via _sweep method into _step method to avoid loop overhead. 
         Periodic boundary conditions are applied.
 
         Parameters
@@ -162,32 +155,49 @@ class MonteCarlo_XY:
                 energy_diff += -np.cos(delta - neighbour_theta) + np.cos(initial_theta - neighbour_theta) # dE = final - initial
                 
         # Acceptance stage:
-        if accept < self.acceptance_prob(energy_diff=energy_diff):
+        exponent = min(0, -self.beta * energy_diff) # prevent overflow error by choosing before evaluating exponent
+        if accept < np.exp(exponent):
             self.spins[x,y] = delta
-       
-    def run(self, steps: int = 1000, store: bool=True, interval: int = 100):
-        """Optimized run method to run the simulation for a number of steps in a Monte Carlo Markov Chain using 
+
+    def _sweep(self, sweep_counter, xs, ys, deltas, accepts):
+        """Perform one full lattice sweep. One lattice sweep consists of N^2 _steps,
+        giving each spin a chance to be flipped. This sweep is used as timestep in the calculation of statistics of interest. 
+        The random numbers arrays generated in run are passed to _sweep, along with a counter indicating how many sweeps are done.
+        _sweep iterates over random number arrays from sweep_count*N^2 to (sweep_count + 1) * N^2, and passes the individual random nrs on to _step.
+        Every sweep call effectively iterates over a slice of the total random nr arrays.
+        """
+        for i in range((sweep_counter * self.length_xy**2), ((sweep_counter+1)* self.length_xy**2)): # take correct slice of random numbers
+            self._step(xs[i], ys[i], deltas[i], accepts[i])
+
+    def run(self, sweeps: int = 1000, store: bool=True, interval: int = 10):
+        """Optimized run method to run the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain. 
+        Draws all needed random numbers at the start of the run, to prevent overhead during the steps.
+        For more info on the structure concerning _sweep, and how random numbers are passed on in iterations, see docstrings _sweep and _step
 
         Parameters
         ----------
-        steps : int, optional
-            _description_, by default 1000
-        store : bool, optional
-            _description_, by default True
-        interval : int, optional
-            _description_, by default 100
+        sweeps : int, optional, default 1000
+            the number of lattice sweeps / timesteps for the run. Each sweep performs N^2 Markov steps
+        store : bool, optional, default True
+            whether to store history arrays
+        interval : int, optional, default 10
+            sample to history arrays in interval, counted in sweeps
         """
         # Pre-generate all random numbers at once
+        size = sweeps * self.length_xy**2 # total size of the run in Markov Chain steps
         rng = np.random.default_rng()  # modern API, apparently faster than np.random
-        xs = rng.integers(0, self.length_xy, size=steps)
-        ys = rng.integers(0, self.length_xy, size=steps)
-        deltas = rng.uniform(0, 2 * np.pi, size=steps)
-        accepts = rng.random(size=steps)  # for the acceptance draw
-    
-        for i in tqdm(range(steps)):
-            if store and i % interval == 0: # sample at intervals
+        xs = rng.integers(0, self.length_xy, size=size)
+        ys = rng.integers(0, self.length_xy, size=size)
+        deltas = rng.uniform(0, 2 * np.pi, size=size)
+        accepts = rng.random(size=size)  # for the acceptance draw
+
+        sweep_counter: int = 0
+        for i in tqdm(range(sweeps)):
+            if store == True and i % interval == 0:
                 self.magn_hist.append(self._calculate_magnetization())
-            self._step(xs[i], ys[i], deltas[i], accepts[i])
+                self.spins_hist.append(self.spins)
+            self._sweep(sweep_counter, xs, ys, deltas, accepts)
+            sweep_counter += 1
 
     def _total_energy(self):
 
@@ -200,7 +210,11 @@ class MonteCarlo_XY:
         m = M / self.length_xy**2
         return m
     
-    def _calculate_autocorrelation(self):
+    def _calculate_autocorrelation(self, t):
+
+
+
+
         pass
     
     def calculate_specific_heat(self):

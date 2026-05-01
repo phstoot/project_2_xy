@@ -2,34 +2,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 import src.simul as simul
 
-test = simul.MonteCarlo_XY(10, 1, start='hot')
-hottest = simul.MonteCarlo_XY(100, 10, start='hot') 
-coldtest = simul.MonteCarlo_XY(100, 10, start='hot')  
-small = simul.MonteCarlo_XY(20, 0.5, start='hot') 
-big = simul.MonteCarlo_XY(100, 0.5, start='hot') 
+test = simul.MonteCarlo_XY(50, 0.5, start='hot')
+coldtest = simul.MonteCarlo_XY(50, 1, start='cold')  
 
-    
-steps = 10**6
+sweeps = 1000 # total of 2 500 000 steps
 
-test.static_plot()
-hottest.static_plot()
+test.static_image()
 coldtest.static_plot()
 
-small.run(steps=steps, store=True, interval=1000)
+test.run(sweeps=sweeps, store=True, interval=10)
 
-small.static_image(save=True)
+test.static_image()
 
-
-
-plt.plot(np.linspace(0, len(coldtest.magn_hist)*1000, len(coldtest.magn_hist)), coldtest.magn_hist)
-plt.xlabel('t (steps)')
-plt.ylabel(r'm (M/$N^2$)')
-plt.xlim(0, len(coldtest.magn_hist)*1000)
-plt.ylim(0,1)
-plt.title(f'Magnetization of XY model, T = {coldtest.temperature}')
-# plt.savefig(f'results/magn_{T}.pdf')
+xaxis = np.linspace(0, sweeps, sweeps // 10)
+plt.plot(xaxis, test.magn_hist)
+plt.xlabel('t (lattice sweeps)')
+plt.ylabel(r'm ($M/N^2$)')
+plt.xlim(0,sweeps)
+plt.ylim(0, 1.1)
+plt.title(f'Magnetization of XY model\n $T$ = 0.5, $J$ = 1, $k_B$ = 1, hot start')
+# plt.savefig(f'results/magn_{n}_coldstart_T_{T}.pdf')
 plt.show()
-# plt.close('all')
+plt.close('all')
+
 
 
 overflowtemps = np.array([0.1, 0.07, 0.06, 0.05])
