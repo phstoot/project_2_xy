@@ -13,7 +13,7 @@ test.static_plot()
 hottest.static_plot()
 coldtest.static_plot()
 
-coldtest.run(steps=steps, store=True)
+coldtest.run(steps=steps, store=False)
 
 coldtest.static_image(save=False)
 

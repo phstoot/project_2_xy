@@ -111,15 +111,6 @@ class MonteCarlo_XY:
             plt.savefig(f'results/im_T_{self.temperature}.pdf')
         plt.show()
         plt.close('all')
-        
-    def _propose_changed_index(self):
-        """Private method: Propose index of the spin that will be changed for the new state. 
-        Every index occurs with same probability."""
-        return np.random.randint(0, self.length_xy), np.random.randint(0, self.length_xy)
-    
-    def _propose_changed_theta(self, ind_x: int, ind_y: int):
-        """Private method: Propose new theta for the inserted index."""
-        return (self.spins[ind_x, ind_y] + np.random.uniform(0, 2*np.pi)) % (2*np.pi)
     
     def acceptance_prob(self, energy_diff: float):
         """Calculates acceptance probability as a function of energy difference between 
@@ -142,30 +133,6 @@ class MonteCarlo_XY:
     #         raise RuntimeError("run() already called. Call reset() to start fresh.")
     
     #     self._run(steps=steps_between)
-            
-    def run(self, steps: int = 1000, store: bool=True, interval: int = 100):
-        """Optimized run method to run the simulation for a number of steps in a Monte Carlo Markov Chain using 
-
-        Parameters
-        ----------
-        steps : int, optional
-            _description_, by default 1000
-        store : bool, optional
-            _description_, by default True
-        interval : int, optional
-            _description_, by default 100
-        """
-        # Pre-generate all random numbers at once
-        rng = np.random.default_rng()  # modern API, apparently faster than np.random
-        xs = rng.integers(0, self.length_xy, size=steps)
-        ys = rng.integers(0, self.length_xy, size=steps)
-        deltas = rng.uniform(0, 2 * np.pi, size=steps)
-        accepts = rng.random(size=steps)  # for the acceptance draw
-    
-        for i in tqdm(range(steps)):
-            if store and i % interval == 0: # sample at intervals
-                self.magn_hist.append(self._calculate_magnetization())
-            self._step(xs[i], ys[i], deltas[i], accepts[i])
 
     def _step(self, x, y, delta, accept):
         """Private optimized step function implementing Metropolis Hastings algorithm. 
@@ -196,7 +163,30 @@ class MonteCarlo_XY:
         # Acceptance stage:
         if accept < self.acceptance_prob(energy_diff=energy_diff):
             self.spins[x,y] = delta
+       
+    def run(self, steps: int = 1000, store: bool=True, interval: int = 100):
+        """Optimized run method to run the simulation for a number of steps in a Monte Carlo Markov Chain using 
 
+        Parameters
+        ----------
+        steps : int, optional
+            _description_, by default 1000
+        store : bool, optional
+            _description_, by default True
+        interval : int, optional
+            _description_, by default 100
+        """
+        # Pre-generate all random numbers at once
+        rng = np.random.default_rng()  # modern API, apparently faster than np.random
+        xs = rng.integers(0, self.length_xy, size=steps)
+        ys = rng.integers(0, self.length_xy, size=steps)
+        deltas = rng.uniform(0, 2 * np.pi, size=steps)
+        accepts = rng.random(size=steps)  # for the acceptance draw
+    
+        for i in tqdm(range(steps)):
+            if store and i % interval == 0: # sample at intervals
+                self.magn_hist.append(self._calculate_magnetization())
+            self._step(xs[i], ys[i], deltas[i], accepts[i])
 
     def _total_energy(self):
 
