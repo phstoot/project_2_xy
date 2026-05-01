@@ -30,6 +30,7 @@ class MonteCarlo_XY:
         self.k_B = k_B
         self.spins = self._init_spins(start)
         self._status = 'initialized'
+        self.start = start
         
         self.beta = 1 / (self.k_B * self.temperature)
         self.spins_hist: list = []
@@ -93,7 +94,7 @@ class MonteCarlo_XY:
         plt.tight_layout()
         plt.show()
     
-    def static_image(self, save=True):
+    def static_image(self, save=True, fname='img.pdf'):
         """Do a static image of current system state with spins as pixels.
         """
         fig, ax = plt.subplots(figsize=(8,8))
@@ -103,13 +104,13 @@ class MonteCarlo_XY:
             clim=[0, 2*np.pi], 
             interpolation='nearest' # no kernel
         )
-        plt.title(f'T = {self.temperature:.3g}')
+        plt.title(f'XY model\n $T$ = {self.temperature}, $J$ = 1, $k_B$ = 1, {self.start} start')
         ax.set_xticks([])
         ax.set_yticks([]) 
         
         if save == True:
-            plt.savefig(f'results/im_T_{self.temperature}.pdf')
-        plt.show()
+            plt.savefig(fname)
+        # plt.show()
         plt.close('all')
     
     def acceptance_prob(self, energy_diff: float):
