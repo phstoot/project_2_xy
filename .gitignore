@@ -6,3 +6,4 @@ data/
 *.png
 __pychache__
 *.ipynb_checkpoints
+.DS_store
