@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-# import sys
-# sys.path.append('project_2_xy/src')
-import src.simul as simul
-import src.utils as utils
+import sys
+sys.path.append('project_2_xy/src')
+import simul
+import utils
 
 # for the final measurements, we need a lot of sweeps for the systems around the equilibrium.
 # the critical system has a tau ~500, so probably needs 1000+ sweeps for equilibrium. We then need about 20 blocks of 16*tau 
