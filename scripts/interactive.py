@@ -1,7 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
+# import sys
+# sys.path.append('project_2_xy/src')
 import src.simul as simul
+import src.utils as utils
 
+
+def warmup():
+    dummy_spins = np.zeros((4, 4))
+    utils._run_sweeps(dummy_spins, 4, 1.0,
+                np.zeros(16, dtype=np.int64), np.zeros(16, dtype=np.int64),
+                np.zeros(16), np.zeros(16), n_sweeps=1)
+
+
+warmup()
 test = simul.MonteCarlo_XY(50, 0.5, start='hot')
 coldtest = simul.MonteCarlo_XY(50, 1, start='cold')  
 

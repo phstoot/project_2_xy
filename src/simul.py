@@ -3,6 +3,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from utils import _run_sweeps
 
 class MonteCarlo_XY:
     """_summary_
@@ -169,35 +170,56 @@ class MonteCarlo_XY:
         for i in range((sweep_counter * self.length_xy**2), ((sweep_counter+1)* self.length_xy**2)): # take correct slice of random numbers
             self._step(xs[i], ys[i], deltas[i], accepts[i])
 
-    def run(self, sweeps: int = 1000, store: bool=True, interval: int = 10):
-        """Optimized run method to run the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain. 
-        Draws all needed random numbers at the start of the run, to prevent overhead during the steps.
-        For more info on the structure concerning _sweep, and how random numbers are passed on in iterations, see docstrings _sweep and _step
+    # def run(self, sweeps: int = 1000, store: bool=True, interval: int = 10):
+    #     """Optimized run method to run the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain. 
+    #     Draws all needed random numbers at the start of the run, to prevent overhead during the steps.
+    #     For more info on the structure concerning _sweep, and how random numbers are passed on in iterations, see docstrings _sweep and _step
 
-        Parameters
-        ----------
-        sweeps : int, optional, default 1000
-            the number of lattice sweeps / timesteps for the run. Each sweep performs N^2 Markov steps
-        store : bool, optional, default True
-            whether to store history arrays
-        interval : int, optional, default 10
-            sample to history arrays in interval, counted in sweeps
-        """
-        # Pre-generate all random numbers at once
-        size = sweeps * self.length_xy**2 # total size of the run in Markov Chain steps
-        rng = np.random.default_rng()  # modern API, apparently faster than np.random
-        xs = rng.integers(0, self.length_xy, size=size)
-        ys = rng.integers(0, self.length_xy, size=size)
+    #     Parameters
+    #     ----------
+    #     sweeps : int, optional, default 1000
+    #         the number of lattice sweeps / timesteps for the run. Each sweep performs N^2 Markov steps
+    #     store : bool, optional, default True
+    #         whether to store history arrays
+    #     interval : int, optional, default 10
+    #         sample to history arrays in interval, counted in sweeps
+    #     """
+    #     # Pre-generate all random numbers at once
+    #     size = sweeps * self.length_xy**2 # total size of the run in Markov Chain steps
+    #     rng = np.random.default_rng()  # modern API, apparently faster than np.random
+    #     xs = rng.integers(0, self.length_xy, size=size)
+    #     ys = rng.integers(0, self.length_xy, size=size)
+    #     deltas = rng.uniform(0, 2 * np.pi, size=size)
+    #     accepts = rng.random(size=size)  # for the acceptance draw
+
+    #     sweep_counter: int = 0
+    #     for i in tqdm(range(sweeps)):
+    #         if store == True and i % interval == 0:
+    #             self.magn_hist.append(self._calculate_magnetization())
+    #             self.spins_hist.append(self.spins)
+    #         self._sweep(sweep_counter, xs, ys, deltas, accepts)
+    #         sweep_counter += 1
+            
+    
+    def run(self, sweeps: int = 1000, store: bool = True, interval: int = 10):
+        size = sweeps * self.length_xy**2
+        rng = np.random.default_rng()
+        xs = rng.integers(0, self.length_xy, size=size, dtype=np.int64)
+        ys = rng.integers(0, self.length_xy, size=size, dtype=np.int64)
         deltas = rng.uniform(0, 2 * np.pi, size=size)
-        accepts = rng.random(size=size)  # for the acceptance draw
+        accepts = rng.random(size=size)
 
-        sweep_counter: int = 0
-        for i in tqdm(range(sweeps)):
-            if store == True and i % interval == 0:
+        for i in tqdm(range(0, sweeps, interval)):
+            if store:
                 self.magn_hist.append(self._calculate_magnetization())
-                self.spins_hist.append(self.spins)
-            self._sweep(sweep_counter, xs, ys, deltas, accepts)
-            sweep_counter += 1
+                self.spins_hist.append(self.spins.copy())
+            
+            batch = min(interval, sweeps - i)
+            start = i * self.length_xy**2
+            end = (i + batch) * self.length_xy**2
+            _run_sweeps(self.spins, self.length_xy, self.beta,
+                        xs[start:end], ys[start:end], deltas[start:end], accepts[start:end],
+                        n_sweeps=batch)
 
     def _total_energy(self):
 
