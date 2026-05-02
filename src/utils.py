@@ -4,9 +4,6 @@ import numba as nb
 from numba import njit
 
 
-
-
-
 def section(title: str):
     """print to console in nice format"""
     width = 60
