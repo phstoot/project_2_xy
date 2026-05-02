@@ -6,6 +6,9 @@ import src.simul as simul
 # the critical system has a tau ~500, so probably needs 1000+ sweeps for equilibrium. We then need about 20 blocks of 16*tau 
 # to get accurate measurements of the statistics, so that would mean ~160 000 sweeps, plus a few tau for equilibration.
 
+#
+# !! start from project directory since /data path is hardcoded in here!!
+#
 
 def main():
     temps = [0.5, 0.7, 0.9, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.5] # prevent weird floating point error in filenames
