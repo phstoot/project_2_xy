@@ -16,6 +16,9 @@ def warmup():
                 np.zeros(16), np.zeros(16), n_sweeps=1)
 
 
+#
+# !! start from project directory since /data path is hardcoded in here!!
+#
 
 def main():
     warmup()
