@@ -3,7 +3,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from utils import _run_sweeps
+from src.utils import _run_sweeps
 
 class MonteCarlo_XY:
     """_summary_
@@ -35,6 +35,7 @@ class MonteCarlo_XY:
         self.beta = 1 / (self.k_B * self.temperature)
         self.spins_hist: list = []
         self.magn_hist: list = []
+        self.e_hist: list = []
         self.saved_index_hist: list = [] # IF NOT USED, REMOVE LATER
         self.stepcount: int = 0
         
@@ -212,6 +213,7 @@ class MonteCarlo_XY:
         for i in tqdm(range(0, sweeps, interval)):
             if store:
                 self.magn_hist.append(self._calculate_magnetization())
+                self.e_hist.append(self._calculate_energy())
                 self.spins_hist.append(self.spins.copy())
             
             batch = min(interval, sweeps - i)
@@ -221,9 +223,20 @@ class MonteCarlo_XY:
                         xs[start:end], ys[start:end], deltas[start:end], accepts[start:end],
                         n_sweeps=batch)
 
-    def _total_energy(self):
+    def _calculate_energy(self):
+        """Calculate total energy of system for the current state of spins.
+        """
+        energy = 0
+        for x in range(self.length_xy):
+            for y in range(self.length_xy):
+                theta = self.spins[x, y]
 
-        pass
+                # avoid double counting so only right and up
+                energy -= np.cos(theta - self.spins[x, (y+1) % self.length_xy]) # up neighbour
+                energy -= np.cos(theta - self.spins[(x+1) % self.length_xy, y]) # right neighbour
+        energy_per_spin = energy / self.length_xy**2
+        return energy_per_spin
+    
     
     def _calculate_magnetization(self):
         """Calculate magnetization per spin m = M/N^2 where M = sum(spins).
