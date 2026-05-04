@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 # sys.path.append('project_2_xy/src')
 import src.simul as simul
 import src.utils as utils
+import src.analysis as analysis
 
 
 def warmup():
@@ -14,7 +15,7 @@ def warmup():
 
 
 warmup()
-test = simul.MonteCarlo_XY(50, 0.5, start='hot')
+test = simul.MonteCarlo_XY(50, 2.5, start='hot')
 coldtest = simul.MonteCarlo_XY(50, 1, start='cold')  
 
 sweeps = 1000 # total of 2 500 000 steps
@@ -22,7 +23,7 @@ sweeps = 1000 # total of 2 500 000 steps
 test.static_image()
 coldtest.static_plot()
 
-test.run(sweeps=sweeps, store=True, interval=10)
+test.run(sweeps=sweeps, store=True, interval=1)
 
 test.static_image()
 
@@ -48,4 +49,8 @@ dE = 8
 def testflow(e):
     return np.exp(e)
 
-exponents = np.linspace(0, 800, 61)
+exponents= np.linspace(0, 800, 61)
+
+e_hist = []
+for state in test.spins_hist:
+    e_hist.append(analysis.energy(state, 50))

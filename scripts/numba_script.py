@@ -23,10 +23,10 @@ def warmup():
 def main():
     warmup()
     
-    
-    temps = [0.5, 0.7, 0.9, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.5] # prevent weird floating point error in filenames
-    sweeps = [162000, 162000, 162000, 162000, 16200, 4000, 4000, 2000, 2000, 2000, 2000]
-    sample_interval = [80, 80, 80, 80, 8, 1, 1, 1, 1, 1, 1]
+    temps = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.5] # prevent weird floating point error in filenames
+    sweeps = [100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 10000, 10000, 5000, 5000, 4000, 4000]
+
+    sample_interval = np.full(14, 1, dtype=int)
     N = 50
 
     for i in range(len(temps)):
@@ -34,15 +34,15 @@ def main():
         hot = simul.MonteCarlo_XY(N, temps[i], start='hot')
         print(f'\nStarting sim: N = {N}, T = {temps[i]}, hot start, length = {sweeps[i]} sweeps...')
         hot.run(sweeps=sweeps[i], store=True, interval=sample_interval[i])
-        np.save(f'data/spins_{N}_T_{temps[i]}_hot.npy', np.array(hot.spins_hist))
-        np.save(f'data/magn_{N}_T_{temps[i]}_hot.npy', np.array(hot.magn_hist))
+        # np.save(f'data/high_res/spins_{N}_T_{temps[i]}_hot.npy', np.array(hot.spins_hist))
+        np.save(f'data/high_res/magn_{N}_T_{temps[i]}_hot.npy', np.array(hot.magn_hist))
 
         # cold initial conditions
         cold = simul.MonteCarlo_XY(N, temps[i], start='cold')
         print(f'\nStarting sim: N = {N}, T = {temps[i]}, cold start, length = {sweeps[i]} sweeps...') 
         cold.run(sweeps=sweeps[i], store=True, interval=sample_interval[i])
-        np.save(f'data/spins_{N}_T_{temps[i]}_cold.npy', np.array(cold.spins_hist))
-        np.save(f'data/magn_{N}_T_{temps[i]}_cold.npy', np.array(cold.magn_hist))
+        # np.save(f'data/high_res/spins_{N}_T_{temps[i]}_cold.npy', np.array(cold.spins_hist))
+        np.save(f'data/high_res/magn_{N}_T_{temps[i]}_cold.npy', np.array(cold.magn_hist))
     print('Done, bye')
 
 

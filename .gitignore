@@ -10,3 +10,4 @@ __pychache__
 *.prof
 *.zip
 *.npy
+*.txt
