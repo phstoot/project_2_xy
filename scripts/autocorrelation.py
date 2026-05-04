@@ -59,7 +59,7 @@ for ic in ['hot', 'cold']:
         ax2.text(0.98, 0.95, textstr, transform=ax2.transAxes, fontsize=13,
                 verticalalignment='top', horizontalalignment='right', bbox=props)
 
-        plt.savefig(f'results/mag_x_50_{ic}start_T_{T}.pdf')
+        plt.savefig(f'results/magn_50_T_{T}_{ic}.pdf')
         # plt.show()
         plt.close('all')
 
