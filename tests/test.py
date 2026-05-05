@@ -11,6 +11,7 @@ if __name__ == '__main__':
     print(f'\nStarting sim..')
     sim = simul.MonteCarlo_XY(50, 1, start='hot')
     sim.run(sweeps=sweeps, store=True, interval=20)
+    np.save('results/testmag.npy', np.array(sim.magn_hist))
     print('done')
     # sim.static_image()
     # plt.plot(sim.magn_hist)
