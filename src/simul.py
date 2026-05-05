@@ -7,6 +7,7 @@ from tqdm import tqdm
 # import sys
 # sys.path.append('project_2_xy/src')
 from src.utils import _run_sweeps
+import src.analysis as analysis
 
 class MonteCarlo_XY:
     """_summary_
@@ -207,7 +208,7 @@ class MonteCarlo_XY:
     #         sweep_counter += 1
             
     
-    def run(self, sweeps: int = 1000, store: bool = True, interval: int = 10):
+    def run(self, sweeps: int = 1000, store: bool = True, interval: int = 10, abs=False):
         """Runs the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain.
         Optimized by generating all random numbers at the start of the run, to prevent overhead during the steps.
         Uses numba from an external method to efficiently run the sweeps, calculating evolution in batches.
@@ -232,10 +233,10 @@ class MonteCarlo_XY:
             deltas = rng.uniform(0, 2 * np.pi, size=size)
             accepts = rng.random(size=size)
 
-        for i in tqdm(range(0, sweeps, interval)):
+        for i in tqdm(range(0, sweeps, interval), ascii="▏▎▍▌▋▊▉█", colour="#457b9d"): 
             if store:
-                self.magn_hist.append(self._calculate_magnetization())
-                self.e_hist.append(self._calculate_energy())
+                self.magn_hist.append(self._calculate_magnetization(abs=abs))
+                self.e_hist.append(analysis.energy(self.spins, self.length_xy))
                 self.spins_hist.append(self.spins.copy())
             batch = min(interval, sweeps - i)
             
@@ -384,12 +385,22 @@ class MonteCarlo_XY:
         return energy_per_spin
     
     
-    def _calculate_magnetization(self):
-        """Calculate magnetization per spin m = M/N^2 where M = sum(spins).
+    def _calculate_magnetization(self, abs=False):
+        """Calculate magnetization per spin m = M/N^2 where M = sum(spins). 
+        If abs=True, returns the norm of the m vector, resulting in a 1D array of magn_hist.
+        If abs=False, returns the x and y components of the m vector, resulting in a 2D array magn_hist
         """
-        M = np.abs(np.sum(np.exp(1j * self.spins)))
-        m = M / self.length_xy**2
-        return m
+        m = None
+        if abs == True:
+            M = np.abs(np.sum(np.exp(1j * self.spins)))
+            m = M / self.length_xy**2
+            return m
+        elif abs == False:
+            Mx = np.sum(np.cos(self.spins))
+            My = np.sum(np.sin(self.spins))
+            return np.array([Mx, My]) / self.length_xy**2
+        else:
+            raise ValueError('Please choose abs=Bool')
     
     def _calculate_autocorrelation(self, t):
 
