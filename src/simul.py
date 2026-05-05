@@ -2,7 +2,10 @@ from matplotlib.widgets import EllipseSelector
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from matplotlib import animation
 from tqdm import tqdm
+# import sys
+# sys.path.append('project_2_xy/src')
 from src.utils import _run_sweeps
 
 class MonteCarlo_XY:
@@ -13,7 +16,8 @@ class MonteCarlo_XY:
             length_xy : int = 50,
             temperature : float = 1,
             k_B : float = 1,
-            start: str = 'cold' # either cold or hot
+            start: str = 'cold', # either cold or hot
+            low_memory: bool = False
             ):
         """Initializes the simulation with given parameters.
 
@@ -31,6 +35,7 @@ class MonteCarlo_XY:
         self.spins = self._init_spins(start)
         self._status = 'initialized'
         self.start = start
+        self.low_memory = low_memory
         
         self.beta = 1 / (self.k_B * self.temperature)
         self.spins_hist: list = []
@@ -99,7 +104,7 @@ class MonteCarlo_XY:
         """Do a static image of current system state with spins as pixels.
         """
         fig, ax = plt.subplots(figsize=(8,8))
-        im = ax.imshow(
+        image = ax.imshow(
             self.spins,
             cmap='hsv',
             clim=[0, 2*np.pi], 
@@ -130,7 +135,7 @@ class MonteCarlo_XY:
     
     #     self._run(steps=steps_between)
 
-    def _step(self, x, y, delta, accept):
+    def _step(self, x:int, y:int, delta:float, accept:float):
         """Private optimized step function implementing Metropolis Hastings algorithm. 
         All random numbers for a run are generated in run method beforehand, and fed via _sweep method into _step method to avoid loop overhead. 
         Periodic boundary conditions are applied.
@@ -161,7 +166,7 @@ class MonteCarlo_XY:
         if accept < np.exp(exponent):
             self.spins[x,y] = delta
 
-    def _sweep(self, sweep_counter, xs, ys, deltas, accepts):
+    def _sweep(self, sweep_counter: int, xs: np.ndarray, ys: np.ndarray, deltas: np.ndarray, accepts: np.ndarray):
         """Perform one full lattice sweep. One lattice sweep consists of N^2 _steps,
         giving each spin a chance to be flipped. This sweep is used as timestep in the calculation of statistics of interest. 
         The random numbers arrays generated in run are passed to _sweep, along with a counter indicating how many sweeps are done.
@@ -203,25 +208,166 @@ class MonteCarlo_XY:
             
     
     def run(self, sweeps: int = 1000, store: bool = True, interval: int = 10):
+        """Runs the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain.
+        Optimized by generating all random numbers at the start of the run, to prevent overhead during the steps.
+        Uses numba from an external method to efficiently run the sweeps, calculating evolution in batches.
+        Used to obtain large datasets.
+        Depending on the memory setting, random numbers are either wholly generated or for each batch separately.
+        
+        Parameters
+        ---------- 
+        sweeps : int, optional, default 1000
+            the number of lattice sweeps / timesteps for the run. Each sweep performs N^2 Markov steps.
+        store : bool, optional, default True
+            whether to store history arrays
+        interval : int, optional, default 10
+            sample to history arrays in interval, counted in sweeps
+        """
         size = sweeps * self.length_xy**2
         rng = np.random.default_rng()
-        xs = rng.integers(0, self.length_xy, size=size, dtype=np.int64)
-        ys = rng.integers(0, self.length_xy, size=size, dtype=np.int64)
-        deltas = rng.uniform(0, 2 * np.pi, size=size)
-        accepts = rng.random(size=size)
+        
+        if self.low_memory == False:
+            xs = rng.integers(0, self.length_xy, size=size, dtype=np.int64)
+            ys = rng.integers(0, self.length_xy, size=size, dtype=np.int64)
+            deltas = rng.uniform(0, 2 * np.pi, size=size)
+            accepts = rng.random(size=size)
 
         for i in tqdm(range(0, sweeps, interval)):
             if store:
                 self.magn_hist.append(self._calculate_magnetization())
                 self.e_hist.append(self._calculate_energy())
                 self.spins_hist.append(self.spins.copy())
-            
             batch = min(interval, sweeps - i)
-            start = i * self.length_xy**2
-            end = (i + batch) * self.length_xy**2
-            _run_sweeps(self.spins, self.length_xy, self.beta,
-                        xs[start:end], ys[start:end], deltas[start:end], accepts[start:end],
-                        n_sweeps=batch)
+            
+            if self.low_memory:
+                xs = rng.integers(0, self.length_xy, size=batch * self.length_xy**2, dtype=np.int64)
+                ys = rng.integers(0, self.length_xy, size=batch * self.length_xy**2, dtype=np.int64)
+                deltas = rng.uniform(0, 2 * np.pi, size=batch * self.length_xy**2)
+                accepts = rng.random(size=batch * self.length_xy**2)
+                _run_sweeps(self.spins, self.length_xy, self.beta,
+                            xs, ys, deltas, accepts,
+                            n_sweeps=batch)
+                
+            else:
+                start = i * self.length_xy**2
+                end = (i + batch) * self.length_xy**2
+                _run_sweeps(self.spins, self.length_xy, self.beta,
+                            xs[start:end], ys[start:end], deltas[start:end], accepts[start:end],
+                            n_sweeps=batch)
+    
+    def _update_animation(self,frame: int, store: bool = True):     
+        """Update function for live animation. Called by FuncAnimation for every frame.
+        Runs a batch of sweeps calling the numba optimized _run_sweeps method, and updates the image and title of the plot.
+        
+        Parameters
+        ----------
+        frame : int
+            the current frame number, used to calculate which slice of random numbers to use for the batch
+        store : bool, optional, default True
+            whether to store history arrays
+        
+        Returns
+        -------
+        tuple
+            the updated image and title objects for FuncAnimation
+        """
+        if store:
+            self.magn_hist.append(self._calculate_magnetization())
+            self.e_hist.append(self._calculate_energy())
+            self.spins_hist.append(self.spins.copy())
+             
+        if self.low_memory:
+            xs = self.rng.integers(0, self.length_xy, size=self.batch_interval *self.length_xy**2, dtype=np.int64)
+            ys = self.rng.integers(0, self.length_xy, size=self.batch_interval *self.length_xy**2, dtype=np.int64)
+            deltas = self.rng.uniform(0, 2*np.pi, size=self.batch_interval *self.length_xy**2)
+            accepts = self.rng.random(size=self.batch_interval *self.length_xy**2)
+        else:
+            start = frame * self.batch_interval * self.length_xy**2
+            xs = self.xs[start:start+ self.batch_interval *self.length_xy**2]
+            ys = self.ys[start:start+self.batch_interval *self.length_xy**2]
+            deltas = self.deltas[start:start+self.batch_interval *self.length_xy**2]
+            accepts = self.accepts[start:start+self.batch_interval *self.length_xy**2]
+
+        _run_sweeps(self.spins, self.length_xy, self.beta,
+                        xs, ys, deltas, accepts,
+                        n_sweeps=self.batch_interval)
+        
+        self.image.set_array(self.spins)
+        self.title.set_text(f'Sweep {self.batch_interval *(frame+1)} | T = {self.temperature} | {self.start} start')
+
+        return (self.image, self.title)
+    
+    
+    def run_live(self, sweeps: int = 1000, batch_interval: int = 10, anim_interval: int = 20, save: bool = False, show: bool = True, fname: str = 'animation.gif'):
+        """Runs a live simulation of the lattice evolution. Calls _update_animation for every frame.
+        Frames are calculated in batches of sweeps.
+        If low_memory == False, all random numbers are generated at the start of the run. 
+        If low_memory == True, random numbers are generated for each batch separately in _update_animation.
+        
+        Parameters
+        ----------
+        sweeps : int, optional, default 1000
+            the number of sweeps to run
+        batch_interval : int, optional, default 10
+            the number of sweeps to run before updating the animation
+        anim_interval : int, optional, default 20
+            the interval between animation frames in milliseconds
+        save : bool, optional, default False
+            whether to save the animation as a GIF
+        show : bool, optional, default True
+            whether to display the animation
+        fname : str, optional, default 'animation.gif'
+            the filename to save the animation as
+
+        Returns
+        -------
+        None
+        """
+        size = sweeps * self.length_xy**2
+        self.batch_interval = batch_interval
+        
+        self.rng = np.random.default_rng()
+        
+        if self.low_memory == False:
+            rng = np.random.default_rng()
+            self.xs = self.rng.integers(0, self.length_xy, size=size, dtype=np.int64)
+            self.ys = self.rng.integers(0, self.length_xy, size=size, dtype=np.int64)
+            self.deltas = self.rng.uniform(0, 2*np.pi, size=size)
+            self.accepts = self.rng.random(size=size)
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        self.image = ax.imshow(
+            self.spins,
+            cmap='hsv',
+            vmin=0, vmax=2*np.pi,
+            interpolation='nearest'
+        )
+
+        ax.set_xticks([])
+        ax.set_yticks([])
+        self.title = ax.set_title(f'Sweep 0 | T = {self.temperature} | {self.start} start')
+
+        anim = animation.FuncAnimation(
+            fig,
+            self._update_animation,
+            frames=int(np.floor(sweeps / self.batch_interval)),
+            interval=anim_interval,
+            blit=False
+        )
+        
+        if save == True:
+            anim.save(fname, writer='pillow')  # for GIF
+        if show == True:
+            plt.show()
+        plt.close('all')
+
+        # Delete unnecessary large random number arrays to free memory
+        self.xs = []
+        self.ys = []
+        self.deltas = []
+        self.accepts = []
+        self._status = "completed"
+    
 
     def _calculate_energy(self):
         """Calculate total energy of system for the current state of spins.

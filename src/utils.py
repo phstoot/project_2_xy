@@ -48,5 +48,9 @@ def _run_sweeps(spins, length_xy, beta, xs, ys, deltas, accepts, n_sweeps):
                 - np.cos(new_theta - spins[x, yp]) + np.cos(initial_theta - spins[x, yp])
             )
 
-            if accepts[i] < np.exp(min(0.0, -beta * energy_diff)):
+            exponent = -beta * energy_diff
+            if exponent > 0:
+                exponent = 0.0
+
+            if accepts[i] < np.exp(exponent):
                 spins[x, y] = new_theta

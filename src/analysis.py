@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 # import sys
 # sys.path.append('project_2_xy/src')
+# import simul
+# import utils
 import src.simul as simul
 import src.utils as utils
 
