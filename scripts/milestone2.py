@@ -1,37 +1,48 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import src.simul as simul
-
-# for the final measurements, we need a lot of sweeps for the systems around the equilibrium.
-# the critical system has a tau ~500, so probably needs 1000+ sweeps for equilibrium. We then need about 20 blocks of 16*tau 
-# to get accurate measurements of the statistics, so that would mean ~160 000 sweeps, plus a few tau for equilibration.
+import src.utils as utils
+import src.analysis as analysis
+import pandas as pd
+import json
 
 #
 # !! start from project directory since /data path is hardcoded in here!!
 #
 
-def main():
-    temps = [0.5, 0.7, 0.9, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.5] # prevent weird floating point error in filenames
-    sweeps = [162000, 162000, 162000, 162000, 16200, 4000, 4000, 2000, 2000, 2000, 2000]
-    sample_interval = [80, 80, 80, 80, 8, 1, 1, 1, 1, 1, 1]
-    N = 50
+def warmup():
+    # for numba
+    dummy_spins = np.zeros((4, 4))
+    utils._run_sweeps(dummy_spins, 4, 1.0,
+                np.zeros(16, dtype=np.int64), np.zeros(16, dtype=np.int64),
+                np.zeros(16), np.zeros(16), n_sweeps=1)
 
-    for i in range(len(temps)):
-        # hot initial conditions
-        hot = simul.MonteCarlo_XY(N, temps[i], start='hot')
-        print(f'\nStarting sim: N = {N}, T = {temps[i]}, hot start, length = {sweeps[i]} sweeps...')
-        hot.run(sweeps=sweeps[i], store=True, interval=sample_interval[i])
-        np.save(f'data/spins_{N}_T_{temps[i]}_hot.npy', np.array(hot.spins_hist))
-        np.save(f'data/magn_{N}_T_{temps[i]}_hot.npy', np.array(hot.magn_hist))
+def main(batch):
+    utils.section('XY model simulation suite')
+    # prepare parameters
+    with open(f"data/low_res_{batch}/batch_params.json") as f:
+        params = json.load(f)
+    print("Parameters description:\n")
+    print(params['description'])
+    temps = params["temps"]
+    sweeps = params["sweeps"]
+    sample_interval = params['sample_interval']
+    ics = params['ics']
+    N = params['N']
 
-        # cold initial conditions
-        cold = simul.MonteCarlo_XY(N, temps[i], start='cold')
-        print(f'\nStarting sim: N = {N}, T = {temps[i]}, cold start, length = {sweeps[i]} sweeps...') 
-        cold.run(sweeps=sweeps[i], store=True, interval=sample_interval[i])
-        np.save(f'data/spins_{N}_T_{temps[i]}_cold.npy', np.array(cold.spins_hist))
-        np.save(f'data/magn_{N}_T_{temps[i]}_cold.npy', np.array(cold.magn_hist))
+    warmup()
+    for ic in ics:
+        for i in range(len(temps)):
+            sim = simul.MonteCarlo_XY(N, temps[i], start=f'{ic}')
+            print(f'\nStarting sim: N = {N}, T = {temps[i]}, {ic} start, length = {sweeps[i]} sweeps...')
+            sim.run(sweeps=sweeps[i], store=True, interval=sample_interval[i])
+            # np.save(f'data/spins_{N}_T_{temps[i]}_hot.npy', np.array(hot.spins_hist))
+            # np.save(f'data/low_res_{batch}/energy_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.e_hist))
+            # np.save(f'data/low_res_{batch}/magn_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.magn_hist))
     print('Done, bye')
 
-
 if __name__ == '__main__':
-    main()
+    batches = [1,2]
+    for b in batches:
+        utils.section(f"Batch {b}/{len(batches)}")
+        main(b)

@@ -123,43 +123,20 @@ with open(f"results/high_res/tau_results_50_{batch}.txt", "w") as out:
 # tau-temp plot
 #################################
 
-# data = pd.read_csv(f"results/high_res/tau_results_50_{batch}.txt", sep=" ")
-# # data = pd.read_csv(f"results/high_res/tau_results_50_2.txt", sep=" ")
-# hot = data[data["start"] == "hot"]
-# cold = data[data["start"] == "cold"]
-
-
-# plt.errorbar(
-#     hot["temp"],
-#     hot["tau"],
-#     hot["tau_variance"]**0.5,
-#     label='hot'
-# )
-# plt.errorbar(
-#     cold["temp"],
-#     cold["tau"],
-#     cold["tau_variance"]**0.5,
-#     label='cold'
-# )
-
-# plt.legend()
-# plt.show()
-
 
 files = glob.glob("results/high_res/tau_results_50_*.txt")
 df = pd.concat([pd.read_csv(f, sep=" ") for f in files])
 grouped = df.groupby(["temp"])["tau"].agg(["mean", "std"]).reset_index()
 grouped.to_csv("results/high_res/tau_temp.txt", sep="\t", index=False)
 
-# plt.style.use("seaborn-v0_8-whitegrid")  # clean base style
-fig = plt.figure(figsize=(6,3))
-# plt.scatter(df['temp'], df['tau'])
+tau_final = pd.read_csv("results/high_res/tau_temp.txt", sep='\t')
+fig = plt.figure(figsize=(7,3.5))
 plt.errorbar(
-    grouped['temp'],
-    grouped['mean'],
-    grouped['std'],
+    tau_final['temp'],
+    tau_final['mean'],
+    tau_final['std'],
     fmt='o',                 # marker style
-    markersize=5,
+    markersize=7,
     color="#000000",         # main color
     ecolor="#000000",        # lighter errorbar color
     elinewidth=1.2,
@@ -169,15 +146,14 @@ plt.errorbar(
     linewidth=1,
     alpha=0.9
 )
-# Ticks
-# plt.tick_params(direction='in', length=5, width=1)
-plt.ylabel(r'$\tau$ (lattice sweeps)')
-plt.xlabel(r'$T$ (unitless)')
+plt.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
+plt.ylabel(r'$\tau$ (lattice sweeps)', size=14)
+plt.xlabel(r'$T$', size=14)
 plt.ylim(-100, 1300)
-plt.axhline(0, color='grey', alpha=0.7)
+plt.axhline(0, color='grey', linestyle=':', alpha=0.7)
 plt.xlim(0.4, 2.6)
 plt.tight_layout()
-plt.savefig('tau_temp.pdf')
+plt.savefig('results/high_res/tau_temp.pdf')
 plt.show()
 
 
