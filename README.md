@@ -36,13 +36,13 @@ pip install .
 
 We simulate the classical 2D XY model with the following choices:
 
-* Coupling constant: ( J = 1 )
-* Boltzmann constant: ( k_B = 1 )
+* Coupling constant: ( $J = 1$ )
+* Boltzmann constant: ( $k_B = 1$ )
 * External field: none
-* Lattice size: ( 50 \times 50 )
+* Lattice size: ( 50 $\times$ 50 )
 * Boundary conditions: periodic
 * Update method: Metropolis Hastings Monte Carlo
-* Spin representation: angles ( \theta \in [0, 2\pi) )
+* Spin representation: angles ( $\theta \in [0, 2\pi]$ )
 
 ### Implementation and reproducability notes
 
@@ -135,7 +135,7 @@ C = energy(energy_data, temp=1, k_b=1, length_xy=1)
 
 ## Authors
 
-Nils Thiessen
+Nils Thiessen, 
 Philip Stoot
 
 ---
