@@ -353,7 +353,8 @@ class MonteCarlo_XY:
             self._update_animation,
             frames=int(np.floor(sweeps / self.batch_interval)),
             interval=anim_interval,
-            blit=False
+            blit=False,
+            repeat=False
         )
         
         if save == True:
@@ -371,7 +372,7 @@ class MonteCarlo_XY:
     
 
     def _calculate_energy(self):
-        """Calculate total energy of system for the current state of spins.
+        """Calculate energy per spin for the current state of the XY system.
         """
         energy = 0
         for x in range(self.length_xy):

@@ -81,29 +81,35 @@ project/
 
 To reproduce the results shown in the report:
 
-### 1. Run simulations
+### 1. Run first simulation and estimate correlation times
 
 ```bash
-python scripts/simulate_*.py
+python scripts/simulate_tau.py
+python scripts/analyse_tau.py
 ```
 
-This generates raw data in the `data/` directory.
+The first script generates raw data in the `data/` directory.
+The second script then calculates the correlation times from this data, which are needed for
+running the second simulation script, and generates output in the `results/` directory.
 
-### 2. Run analysis
+### 2. Run second simulation and calculate observables
 
 ```bash
-python scripts/analyse_*.py
+python scripts/simulate_observables.py
+python scripts/analyse_observables.py
 ```
 
-This processes the data and produces final results and plots in the `results/` directory.
+The third script generates raw data in the `data/` directory, with the simulation setup based on the 
+best-fit values for tau from the previous analysis.
+The fourth script processes the data and produces final results and plots in the `results/` directory.
 
-> Note: Full simulations may take significant time depending on the number of sweeps and batches. According to our tests and using the Numba implementation, a full suite consisting of ~10^5 sweeps for 14 temperatures should not take longer than 20 minutes. 
+> Note: Full simulations may take significant time depending on the number of sweeps and batches. According to our tests and using the Numba implementation, a full suite with runs of ~10^5 sweeps for 14 temperatures should not take longer than ~15 minutes. 
 
 ---
 
 ## General Usage
 
-The package can also be used outside of the pre-made scripts. See the simple example below:
+The package can also be used outside of the pre-made scripts, by simply importing the module when it is installed in your environment. See the simple example below:
 
 ### Example
 
@@ -116,6 +122,9 @@ sim = MonteCarlo_XY(length_xy=50, temperature=1, start='cold')
 
 # Run simulation
 sim.run(sweeps=1000, store=True, interval=1)
+
+# Run live to see evolution of system in animation
+sim.run_live(sweeps=2000, batch_interval=1)
 
 # Access recorded data
 magnet_data = sim.magn_hist
@@ -130,6 +139,7 @@ tau_estimate = correlation_time(autocorr)
 chi = magn_susc(magnet_data, temp=1, k_b=1, length_xy=1)
 C = energy(energy_data, temp=1, k_b=1, length_xy=1)
 ```
+From this point on more supplemental analysis (mean, standard deviation) can be set up by the user in scripts.
 
 ---
 
