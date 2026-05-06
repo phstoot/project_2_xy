@@ -10,6 +10,8 @@
 #  - magn susceptibility per spin X_m
 #  - specific heat per spin C
 ###############################################
+from math import e
+
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as sco
@@ -31,8 +33,6 @@ batch = 0
 ################################################
 # 1: for the first two, we use the high resolution data
 ################################################
-
-
 
 def e_m_pipeline():
     """Pipeline function to calculate energy and magnetization per spin. Only one batch of simulations is needed.
@@ -76,69 +76,9 @@ def e_m_pipeline():
         m_df.to_csv(f'results/high_res_0/m_temp_{ic}.txt', sep="\t", index=False)
 
 
-
-def e_m_plot():
-    # combine in one report plot
-    try:
-        e_df = pd.read_csv('results/high_res_0/e_temp_cold.txt', sep='\t')
-        m_df = pd.read_csv('results/high_res_0/m_temp_cold.txt', sep='\t')
-    except:
-        raise RuntimeError('no results found')
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6,5), sharex=True)
-    ax1.errorbar(
-        m_df['temp'],
-        m_df['mean'],
-        m_df['std'],
-        fmt='o',                 # marker style
-        markersize=7,
-        color="#e63946",         # main color
-        ecolor="#e63946",       # lighter errorbar color
-        elinewidth=1.2,
-        capsize=3,
-        capthick=1,
-        linestyle='--',           # connect points
-        linewidth=1,
-        alpha=0.9
-        )
-    ax1.set_ylabel(r'$\langle |m| \rangle$', size=15)
-    ax1.set_xlim(0.4, 2.6)
-    ax1.set_ylim(bottom=0)
-    ax1.yaxis.set_label_coords(-0.11, 0.5)
-    ax2.errorbar(
-        e_df['temp'],
-        e_df['mean'],
-        e_df['std'],
-        fmt='o',                 # marker style
-        markersize=7,
-        color="#479d2a",         # main color
-        ecolor="#63d03fff",       # lighter errorbar color
-        elinewidth=1.2,
-        capsize=3,
-        capthick=1,
-        linestyle='--',           # connect points
-        linewidth=1,
-        alpha=0.9
-        )
-    ax2.set_ylabel(r'$\langle |e| \rangle$', size=15)
-    ax2.set_xlabel(r'$T$', size=15)
-    ax1.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
-    ax2.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
-    plt.tight_layout()
-    plt.subplots_adjust(hspace=0)
-    plt.savefig(f'results/e_m_T_final.pdf')
-    plt.show()
-
-
-
-
-
-
-
 ################################################################################
-#
 # 2: for the last two, we use the low resolution data and the block approach. 
 # The data has run for more than 20 blocks of 16tau length
-#
 ################################################################################
 
 
@@ -208,65 +148,7 @@ def x_c_pipeline():
         heat_df.to_csv(results_dir/f'heat_temp_{ic}.txt', sep="\t", index=False)
 
 
-def x_c_plot_batches():
-    """Generate plots of the X_m and C results of the individual batches. Not used in final report.
-    """
-    susc_df = pd.read_csv(results_dir/f'susc_temp_hot.txt', sep='\t')
-    fig = plt.figure(figsize=(6,3))
-    plt.errorbar(
-        susc_df['temp'],
-        susc_df['mean'],
-        susc_df['err'],
-        fmt='o',                 # marker style
-        markersize=7,
-        color="#492a9d",         # main color
-        ecolor="#663ade",       # lighter errorbar color
-        elinewidth=1.2,
-        capsize=3,
-        capthick=1,
-        linestyle='--',           # connect points
-        linewidth=1,
-        alpha=0.9
-        )
-    # Ticks
-    plt.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
-    plt.ylabel(r'$\chi_m$ ($N^{-2}$ K$^{-1}$)')
-    plt.xlabel(r'$T$ (unitless)')
-    plt.xlim(0.4, 2.6)
-    plt.tight_layout()
-    plt.savefig(results_dir/f'susc_temp_hot.pdf')
-    plt.show()
-
-    heat_df = pd.read_csv(results_dir/f'heat_temp_cold.txt', sep='\t')
-    fig = plt.figure(figsize=(6,3))
-    plt.errorbar(
-        heat_df['temp'],
-        heat_df['mean'],
-        heat_df['err'],
-        fmt='o',                 # marker style
-        markersize=7,
-        color="#e88253",         # main color
-        ecolor="#e88253",       # lighter errorbar color
-        elinewidth=1.2,
-        capsize=3,
-        capthick=1,
-        linestyle='--',           # connect points
-        linewidth=1,
-        alpha=0.9
-        )
-    # Ticks
-    plt.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
-    plt.ylabel(r'$C$ ($N^{-2}$ K$^{-2}$)')
-    plt.xlabel(r'$T$ (unitless)')
-    plt.xlim(0.4, 2.6)
-    plt.tight_layout()
-    plt.savefig(results_dir/f'heat_temp_hot.pdf')
-    plt.show()
-
-
-
-
-##### combine batches for magnetic susceptibility and generate final plot
+##### combine batches for magnetic susceptibility – needs more precision
 
 
 def final_magn_susc(n_batches):
@@ -287,21 +169,82 @@ def final_magn_susc(n_batches):
     final.to_csv(f'results/susc_temp_final.txt', sep='\t', index=False)
 
 
-def x_c_plot():
+
+################################################################################
+#                                                                              #
+#                               PLOTTING                                       #
+#                                                                              #
+################################################################################
+
+def magnet_plot():
+    """Generate plot for magnetization and magnetic susceptibility
+    """
     try:
+        m_df = pd.read_csv('results/high_res_0/m_temp_cold.txt', sep='\t') 
         susc_df = pd.read_csv(f'results/susc_temp_final.txt', sep='\t')
+    except:
+        raise RuntimeError('no results found')
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6,5), sharex=True)
+    ax1.errorbar(
+        m_df['temp'],
+        m_df['mean'],
+        m_df['std'],
+        fmt='o',            
+        markersize=7,
+        color="#e63946",     
+        ecolor="#e63946",     
+        elinewidth=1.2,
+        capsize=3,
+        capthick=1,
+        linestyle='--',          
+        linewidth=1,
+        alpha=0.9
+        )
+    ax1.set_ylabel(r'$\langle |m| \rangle$', size=15)
+    ax1.set_xlim(0.4, 2.6)
+    ax1.set_ylim(bottom=0)
+    ax2.errorbar(
+        susc_df['temp'],
+        susc_df['mean'],
+        susc_df['err'],
+        fmt='o',               
+        markersize=7,
+        color="#492a9d",        
+        ecolor="#663ade",   
+        elinewidth=1.2,
+        capsize=3,
+        capthick=1,
+        linestyle='--',          
+        linewidth=1,
+        alpha=0.9
+        )
+    ax2.set_ylabel(r'$\chi_m$', size=15)
+    ax2.set_xlabel(r'$T$', size=15)
+    ax1.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
+    ax2.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
+    plt.tight_layout()
+    plt.subplots_adjust(hspace=0)
+    plt.savefig(f'results/magn_final.pdf')
+    plt.show()
+
+
+def energy_plot():
+    """Generate plot for energy and specific heat
+    """
+    try:
+        e_df = pd.read_csv('results/high_res_0/e_temp_cold.txt', sep='\t')
         heat_df = pd.read_csv(f'results/low_res_1/heat_temp_cold.txt', sep='\t') # for heat, one batch is precise enough
     except:
         raise RuntimeError('no results found')
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6,5), sharex=True)
     ax1.errorbar(
-        susc_df['temp'],
-        susc_df['mean'],
-        susc_df['err'],
+        e_df['temp'],
+        e_df['mean'],
+        e_df['std'],
         fmt='o',                 # marker style
         markersize=7,
-        color="#492a9d",         # main color
-        ecolor="#663ade",       # lighter errorbar color
+        color="#479d2a",         # main color
+        ecolor="#63d03fff",       # lighter errorbar color
         elinewidth=1.2,
         capsize=3,
         capthick=1,
@@ -309,10 +252,8 @@ def x_c_plot():
         linewidth=1,
         alpha=0.9
         )
-    ax1.set_ylabel(r'$\chi_m$', size=15)
-    # plt.xlabel(r'$T$ (unitless)')
+    ax1.set_ylabel(r'$\langle e \rangle$', size=15)
     ax1.set_xlim(0.4, 2.6)
-    # ax1.set_ylim(bottom=0)
     ax2.errorbar(
         heat_df['temp'],
         heat_df['mean'],
@@ -330,12 +271,11 @@ def x_c_plot():
         )
     ax2.set_ylabel(r'$C$', size=15)
     ax2.set_xlabel(r'$T$', size=15)
-    ax2.set_ylim(bottom=0)
     ax1.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
     ax2.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
     plt.tight_layout()
     plt.subplots_adjust(hspace=0)
-    plt.savefig(f'results/heat_susc_T_final.pdf')
+    plt.savefig(f'results/energy_final.pdf')
     plt.show()
 
 
@@ -367,7 +307,6 @@ if __name__ == '__main__':
         raise RuntimeError('no results found')
 
     e_m_pipeline()
-    e_m_plot()
 
 
     # X_m and C -> low res, several batches are needed
@@ -393,10 +332,12 @@ if __name__ == '__main__':
         N = params['N']
 
         x_c_pipeline()
-        # x_c_plot_batches() # not used in report
 
     # outside of batch (several batches handled within func):
     final_magn_susc(3) # check if number of batches correct
-    x_c_plot()
+    
+    # generate plots
+    magnet_plot()
+    energy_plot()
 
 
