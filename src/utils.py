@@ -21,7 +21,7 @@ def spacer(n: int = 2):
     print("\n" * n, end="")
 
 def combine_measurements(group):
-    """Used in one of the pipeline scripts"""
+    """Used in one of the pipeline scripts for magnetic susceptibility, where we want to compile both the statistical error from """
     means = group['mean'].values
     errs = group['err'].values
     n = len(means)

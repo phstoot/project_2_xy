@@ -15,9 +15,9 @@ if __name__ == '__main__':
     temps = np.arange(0.5, 2.5, 0.2)
     sweeps = 2000 # 5 million markov steps
     print(f'\nStarting sim..')
-    sim = simul.MonteCarlo_XY(200, 1.5, start='cold')
-    sim.run_live(sweeps=1000, batch_interval=20, save=False, fname='cold_to_hot.gif')
-    sim.run(sweeps=sweeps, store=True, interval=20)
+    sim = simul.MonteCarlo_XY(50, 0.5, start='funky')
+    sim.run_live(sweeps=100, batch_interval=1, anim_interval=100, save=True, fname='funky.gif')
+    sim.run(sweeps=40000, store=True, interval=20)
     # np.save('results/testmag.npy', np.array(sim.magn_hist))
     print('done')
     sim.static_image()
