@@ -362,7 +362,7 @@ if __name__ == '__main__':
     N = params['N']
 
     try:
-        taus = pd.read_csv('results/high_res/tau_temp.txt', delimiter='\t')[['temp','mean']]
+        taus = pd.read_csv('results/tau_temp.txt', delimiter='\t')[['temp','mean']]
     except:
         raise RuntimeError('no results found')
 
