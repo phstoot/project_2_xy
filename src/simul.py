@@ -10,28 +10,7 @@ from src.utils import _run_sweeps
 import src.analysis as analysis
 
 class MonteCarlo_XY:
-    """This class implements a Monte Carlo simulation of the 2D XY model on a square lattice. It uses the 
-    Metropolis Hastings algorithm to stochastically sample phase space for a system at a given temperature and create a 
-    Markov chain of system states.
-    Instances of the class can be run with or without animation, and can store the history of the spins,
-    magnetization and energy per spin in accessible arrays for later usage. 
-
-    The core of the simulation implements the numba JIT compiler to significantly speed up runtime. In a 
-    standard user laptop/computer, this code should be able to do about 10^7 Monte Carlo steps per second. 
-    This makes the class exceptionally suitable to obtain large datasets for further analysis of XY model 
-    observables, like correlation time, magnetic susceptibility and helicity modulus. 
-
-    Main methods
-    ------------
-    __init__(): initialize variables
-
-    static_plot(): Do a static visualisation of current system state using plt.quiver
-
-    static_image(): Do a static image of current system state with spins as pixels.
-
-    run(): Runs the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain.
-
-    run_live(): Runs a live simulation + animation of the lattice evolution.
+    """see __init__
     """
     def __init__(
             self,
@@ -41,14 +20,43 @@ class MonteCarlo_XY:
             start: str = 'cold', # either cold or hot
             low_memory: bool = False
             ):
-        """Initializes the simulation with given parameters.
+        """
+        Monte Carlo XY Model simulation
+        -------------------------------
+        This class implements a Monte Carlo simulation of the 2D XY model on a square lattice. It uses the 
+        Metropolis Hastings algorithm to stochastically sample phase space for a system at a given temperature and create a 
+        Markov chain of system states.
+        Instances of the class can be run with or without animation, and can store the history of the spins,
+        magnetization and energy per spin in accessible arrays for later usage. 
+
+        The core of the simulation implements the numba JIT compiler to significantly speed up runtime. In a 
+        standard user laptop/computer, this code should be able to do about 10^7 Monte Carlo steps per second. 
+        This makes the class exceptionally suitable to obtain large datasets for further analysis of XY model 
+        observables, like correlation time, magnetic susceptibility and specific heat. 
 
         Parameters
         ----------
-        [parameters here]
+        length_xy : int, optional
+            length of grid, by default 50
+        temperature : float, optional
+            temperature bath of system, by default 1
+        k_B : float, optional
+            boltzmann constant, by default 1
+        start : str, optional
+            initial conditions, either 'hot' (random spins) or 'cold' (aligned spins), by default 'cold'
+
+        Main methods
+        ------------
+
+        static_plot(): Do a static visualisation of current system state using plt.quiver
+
+        static_image(): Do a static image of current system state with spins as pixels.
+
+        run(): Runs the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain.
+
+        run_live(): Runs a live simulation + animation of the lattice evolution.
         """
-        
-    
+
         self.length_xy = length_xy
         self.temperature = temperature
         self.k_B = k_B
