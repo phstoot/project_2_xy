@@ -10,6 +10,8 @@ This project implements a Monte Carlo simulation of the 2D XY model on a square 
 
 The code is structured as a small Python package with separate modules, along with scripts to reproduce the results used in the report.
 
+The code includes an animation feature, and some example animations are included in example_gifs
+
 ---
 
 ## Installation
