@@ -253,7 +253,7 @@ class MonteCarlo_XY:
                 start = i * self.length_xy**2
                 end = (i + batch) * self.length_xy**2
                 _run_sweeps(self.spins, self.length_xy, self.beta,
-                            xs[start:end], ys[start:end], deltas[start:end], accepts[start:end],
+                            xs[start:end], ys[start:end], deltas[start:end], accepts[start:end], # type: ignore
                             n_sweeps=batch)
     
     def _update_animation(self,frame: int, store: bool = True):     

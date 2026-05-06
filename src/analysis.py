@@ -9,13 +9,25 @@ import src.utils as utils
 from numba import njit
 
 
-def autocorrelation(m, discard):
-    # slice off equilibration time, for now let's do 500 timesteps
+def autocorrelation(m, discard: int):
+    """Compute (sumwise, discrete) autocorrelation function of a monte carlo chain
+
+    Parameters
+    ----------
+    m : array
+        monte carlo chain (in this project, magnetization history array)
+    discard : int
+        burn in time in sweeps
+
+    Returns
+    -------
+    X : array
+        autocorrelation function
+    """
     m = m[discard:]
     t_max = len(m)
 
     X = np.zeros(len(m))
-    # we are gonna iterate over all t's within the function
     time = np.arange(len(m))
     for t in range(len(m)):
         factor = 1 / (t_max - t)
@@ -24,11 +36,39 @@ def autocorrelation(m, discard):
     return X
 
 def correlation_time(x):
+    """Estimate of correlation time tau by summing up until X(t) < 0
+
+    Parameters
+    ----------
+    x : array
+        autocorrelation function
+
+    Returns
+    -------
+    tau : float
+        estimate of correlation time
+    """
     stop_idx = np.where(x <= 0)[0][0]
     tau = np.sum( x[0:stop_idx] / x[0])
     return tau
 
-def autocorrelation_curve(t, x_0, tau):
+def autocorrelation_curve(t, x_0 : float, tau : float):
+    """Generate a curve of the autocorrelation function with a given correlation time
+
+    Parameters
+    ----------
+    t : array
+        x-axis, array of timesteps
+    x_0 : float
+        X(t) at t=0
+    tau : float
+        correlation time
+
+    Returns
+    -------
+    array
+        the autocorrelation curve for the given time axis
+    """
     x_t = x_0 * np.exp(-t / tau)
     return x_t
 
