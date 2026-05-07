@@ -18,28 +18,37 @@ def warmup():
 
 
 warmup()
-test = simul.MonteCarlo_XY(50, 0.9,start='hot', low_memory=False)
-coldtest = simul.MonteCarlo_XY(50, 1, start='cold', low_memory=True)  
+# test = simul.MonteCarlo_XY(500, 0.9,start='hot', low_memory=True)
+coldtest = simul.MonteCarlo_XY(200, 1, start='cold', low_memory=True)  
 
-sweeps = 1000 # total of 2 500 000 steps
+sweeps = 10000 # total of 2 500 000 steps
 
 # test.static_image()
 # coldtest.static_plot()
 
 # test.run(sweeps=sweeps)
 
-# coldtest.run(sweeps=sweeps)
+coldtest.run(sweeps=sweeps, interval=100)
+# test.static_plot()
+coldtest.static_plot()
+
+
+
+# test.run_live(sweeps=sweeps, low_memory=False, save=False, show=True)
+
 # test.static_image()
+
+# coldtest.run_live(sweeps=sweeps, low_memory=True, save=False, show=True)
 # coldtest.static_image()
 
 
 
-test.run_live(sweeps=sweeps, low_memory=False, save=False, show=True)
+# test.run_live(sweeps=sweeps, low_memory=False, save=False, show=True)
 
-test.static_image()
+# test.static_image()
 
-coldtest.run_live(sweeps=sweeps, low_memory=True, save=False, show=True)
-coldtest.static_image()
+# coldtest.run_live(sweeps=sweeps, low_memory=True, save=False, show=True)
+# coldtest.static_image()
 
 # xaxis = np.linspace(0, sweeps, sweeps // 10)
 # plt.plot(xaxis, test.magn_hist)

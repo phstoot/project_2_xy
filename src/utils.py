@@ -17,17 +17,37 @@ def spacer(n: int = 2):
     print("\n" * n, end="")
 
 
-# def hamiltonian(j_coupling= 1, spin_i, spin_j, magnetic= False):
-#     if magnetic == True:
-#         raise NotImplementedError('Not implemented')
-    
-#     H = -j_coupling #* np.sum()
-
-
 
 @njit
-def _run_sweeps(spins, length_xy, beta, xs, ys, deltas, accepts, n_sweeps):
-    """Compiled core loop: runs all sweeps, modifies spins in place."""
+def _run_sweeps(spins: np.ndarray, length_xy: int, beta: float, xs: np.ndarray, ys: np.ndarray, deltas: np.ndarray, accepts: np.ndarray, n_sweeps: int):
+    """Compiled core loop: runs batches of sweeps by letting numba handle the computation.
+    Implements periodic boundary conditions over modulo indexing.
+    Energy differences only considers the the contributions changed by the proposed update. 
+    To avoid evaluating large exponentials, the exponents are minimized first before being passed to np.exp, and if they are positive.
+    
+    Parameters
+    ----------
+    spins : array
+        array with spin angles at each lattice site
+    length_xy : int
+        size of the grid
+    beta : float
+        inverse temperature
+    xs : array
+        x-index of the spins to be updated
+    ys : array
+        y-index of the spins to be updated
+    deltas : array
+        proposed changes to the spin angles
+    accepts : array
+        random numbers for acceptance criterion
+    n_sweeps : int
+        number of sweeps to run
+
+    Returns
+    -------
+    None
+    """
     steps_per_sweep = length_xy * length_xy
     for sweep in range(n_sweeps):
         for i in range(sweep * steps_per_sweep, (sweep + 1) * steps_per_sweep):
