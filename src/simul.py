@@ -10,7 +10,7 @@ from src.utils import _run_sweeps
 import src.analysis as analysis
 
 class MonteCarlo_XY:
-    """_summary_
+    """see __init__
     """
     def __init__(
             self,
@@ -20,16 +20,43 @@ class MonteCarlo_XY:
             start: str = 'cold', # either cold or hot
             low_memory: bool = False
             ):
-        """Initializes the simulation with given parameters.
+        """
+        Monte Carlo XY Model simulation
+        -------------------------------
+        This class implements a Monte Carlo simulation of the 2D XY model on a square lattice. It uses the 
+        Metropolis Hastings algorithm to stochastically sample phase space for a system at a given temperature and create a 
+        Markov chain of system states.
+        Instances of the class can be run with or without animation, and can store the history of the spins,
+        magnetization and energy per spin in accessible arrays for later usage. 
+
+        The core of the simulation implements the numba JIT compiler to significantly speed up runtime. In a 
+        standard user laptop/computer, this code should be able to do about 10^7 Monte Carlo steps per second. 
+        This makes the class exceptionally suitable to obtain large datasets for further analysis of XY model 
+        observables, like correlation time, magnetic susceptibility and specific heat. 
 
         Parameters
         ----------
-        [parameters here]
+        length_xy : int, optional
+            length of grid, by default 50
+        temperature : float, optional
+            temperature bath of system, by default 1
+        k_B : float, optional
+            boltzmann constant, by default 1
+        start : str, optional
+            initial conditions, either 'hot' (random spins) or 'cold' (aligned spins), by default 'cold'
+
+        Main methods
+        ------------
+
+        static_plot(): Do a static visualisation of current system state using plt.quiver
+
+        static_image(): Do a static image of current system state with spins as pixels.
+
+        run(): Runs the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain.
+
+        run_live(): Runs a live simulation + animation of the lattice evolution.
         """
-        
-        
-        
-        
+
         self.length_xy = length_xy
         self.temperature = temperature
         self.k_B = k_B
@@ -49,17 +76,61 @@ class MonteCarlo_XY:
     def __repr__(self) -> str:
         return (
             f"MonteCarlo_XY(length={self.length_xy}, temperature={self.temperature:.2f}, "
-            f"num_particles={self.length_xy**2}, step= TO BE IMPLEMENTED, "
+            f"num_particles={self.length_xy**2}, saved states = {len(self.magn_hist)}"
             f"status={self._status}"
             )
 
     def _init_spins(self, start):
-        """Private method to initialize XY model with either random spins (start='hot') or aligned spins (start='cold')
+        """Private method to initialize XY model with either random spins (start='hot') or aligned spins (start='cold'), or ...
         """
+        spins = np.zeros((self.length_xy, self.length_xy))
         if start == 'hot':
             spins = np.random.uniform(0, 2*np.pi, (self.length_xy, self.length_xy))
         elif start == 'cold':
             spins = np.full((self.length_xy, self.length_xy), (4/3)*np.pi)
+        elif start == 'funky':
+            print('You funky bastard...')
+            do = np.random.randint(0,3)
+            if do == 0:
+                print('Choosing two opposing halves (try static_image before running)')
+                spins = np.zeros((self.length_xy, self.length_xy))
+                mid = self.length_xy // 2
+                spins[:, :mid] = 0
+                spins[:, mid:] = np.pi
+            elif do == 1:
+                print('Choosing four quadrants (try static_image before running)')
+                spins = np.zeros((self.length_xy, self.length_xy))
+                mid = self.length_xy // 2
+                spins[:mid, :mid] = 0
+                spins[:mid, mid:] = np.pi / 2
+                spins[mid:, :mid] = np.pi
+                spins[mid:, mid:] = 3*np.pi / 2
+            elif do == 2:
+                print('Choosing center region (try static_image before running)')
+                L = self.length_xy
+                x, y = np.indices((L, L))
+                cx = cy = L // 2
+                R = L // 4
+                w = 2.0   # interface width
+                r = np.sqrt((x - cx)**2 + (y - cy)**2)
+                # smooth transition function
+                f = 0.5 * (1 - np.tanh((r - R)/w))
+                # interpolate between two angles
+                theta_inside = np.pi
+                theta_outside = 0
+
+                spins = theta_outside + f * (theta_inside - theta_outside)
+                spins = np.mod(spins, 2*np.pi)
+            elif do == 3:
+                print('Choosing gradient (try static_image before running)')
+                x, y = np.indices((self.length_xy, self.length_xy))
+                spins = 2*np.pi * x / self.length_xy
+            elif do == 4:
+                print('Choosing vortex (try static image before running)')
+                x, y = np.indices((self.length_xy, self.length_xy))
+                cx = cy = self.length_xy // 2
+                spins = np.arctan2(y - cy, x - cx)
+                spins = np.mod(spins, 2*np.pi)
         else:
             raise ValueError("choose 'hot' or 'cold' to start")
         return spins
@@ -120,21 +191,6 @@ class MonteCarlo_XY:
         if show == True:
             plt.show()
         plt.close('all')
-            
-    # TODO not sure if we need this function, but we probably do looking at milestone 2.
-    # def equilibrate(
-    #     self, steps_between = 1000
-    # ):
-    #     """(Obviously needs some actual algorithm)"""
-        
-    #     if self._status == "equilibrated":
-    #         raise RuntimeError(
-    #             "System is already in equilibrium. Call run() to run simulation."
-    #         )
-    #     if self._status == "completed":
-    #         raise RuntimeError("run() already called. Call reset() to start fresh.")
-    
-    #     self._run(steps=steps_between)
 
     def _step(self, x:int, y:int, delta:float, accept:float):
         """Private optimized step function implementing Metropolis Hastings algorithm. 
@@ -176,38 +232,7 @@ class MonteCarlo_XY:
         """
         for i in range((sweep_counter * self.length_xy**2), ((sweep_counter+1)* self.length_xy**2)): # take correct slice of random numbers
             self._step(xs[i], ys[i], deltas[i], accepts[i])
-
-    # def run(self, sweeps: int = 1000, store: bool=True, interval: int = 10):
-    #     """Optimized run method to run the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain. 
-    #     Draws all needed random numbers at the start of the run, to prevent overhead during the steps.
-    #     For more info on the structure concerning _sweep, and how random numbers are passed on in iterations, see docstrings _sweep and _step
-
-    #     Parameters
-    #     ----------
-    #     sweeps : int, optional, default 1000
-    #         the number of lattice sweeps / timesteps for the run. Each sweep performs N^2 Markov steps
-    #     store : bool, optional, default True
-    #         whether to store history arrays
-    #     interval : int, optional, default 10
-    #         sample to history arrays in interval, counted in sweeps
-    #     """
-    #     # Pre-generate all random numbers at once
-    #     size = sweeps * self.length_xy**2 # total size of the run in Markov Chain steps
-    #     rng = np.random.default_rng()  # modern API, apparently faster than np.random
-    #     xs = rng.integers(0, self.length_xy, size=size)
-    #     ys = rng.integers(0, self.length_xy, size=size)
-    #     deltas = rng.uniform(0, 2 * np.pi, size=size)
-    #     accepts = rng.random(size=size)  # for the acceptance draw
-
-    #     sweep_counter: int = 0
-    #     for i in tqdm(range(sweeps)):
-    #         if store == True and i % interval == 0:
-    #             self.magn_hist.append(self._calculate_magnetization())
-    #             self.spins_hist.append(self.spins)
-    #         self._sweep(sweep_counter, xs, ys, deltas, accepts)
-    #         sweep_counter += 1
-            
-    
+  
     def run(self, sweeps: int = 1000, store: bool = True, interval: int = 10, abs=False):
         """Runs the simulation for a number of lattice sweeps in a Monte Carlo Markov Chain.
         Optimized by generating all random numbers at the start of the run, to prevent overhead during the steps.
@@ -253,7 +278,7 @@ class MonteCarlo_XY:
                 start = i * self.length_xy**2
                 end = (i + batch) * self.length_xy**2
                 _run_sweeps(self.spins, self.length_xy, self.beta,
-                            xs[start:end], ys[start:end], deltas[start:end], accepts[start:end],
+                            xs[start:end], ys[start:end], deltas[start:end], accepts[start:end], # type: ignore
                             n_sweeps=batch)
     
     def _update_animation(self,frame: int, store: bool = True):     
@@ -353,7 +378,8 @@ class MonteCarlo_XY:
             self._update_animation,
             frames=int(np.floor(sweeps / self.batch_interval)),
             interval=anim_interval,
-            blit=False
+            blit=False,
+            repeat=False
         )
         
         if save == True:
@@ -371,7 +397,7 @@ class MonteCarlo_XY:
     
 
     def _calculate_energy(self):
-        """Calculate total energy of system for the current state of spins.
+        """Calculate energy per spin for the current state of the XY system.
         """
         energy = 0
         for x in range(self.length_xy):
@@ -402,16 +428,12 @@ class MonteCarlo_XY:
         else:
             raise ValueError('Please choose abs=Bool')
     
-    def _calculate_autocorrelation(self, t):
-
-
-
-
-        pass
+    # def _calculate_autocorrelation(self, t):
+    #     pass
     
-    def calculate_specific_heat(self):
-        return
+    # def calculate_specific_heat(self):
+    #     pass
     
-    def calculate_susceptibility(self):
-        return
+    # def calculate_susceptibility(self):
+    #     pass
 
