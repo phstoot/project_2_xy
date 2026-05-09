@@ -51,9 +51,8 @@ def find_project_root():
     """
     return Path(__file__).resolve().parents[1]
     
-
 @njit
-def _run_sweeps(spins: np.ndarray, length_xy: int, beta: float, xs: np.ndarray, ys: np.ndarray, deltas: np.ndarray, accepts: np.ndarray, n_sweeps: int):
+def _run_sweeps(spins: np.ndarray, length_xy: int, beta: float, xs: np.ndarray, ys: np.ndarray, deltas: np.ndarray, accepts: np.ndarray, n_sweeps: int, field: float = 0):
     """Compiled core loop: runs batches of sweeps by letting numba handle the computation.
     Implements periodic boundary conditions over modulo indexing.
     Energy differences only considers the the contributions changed by the proposed update. 
@@ -77,6 +76,8 @@ def _run_sweeps(spins: np.ndarray, length_xy: int, beta: float, xs: np.ndarray, 
         random numbers for acceptance criterion
     n_sweeps : int
         number of sweeps to run
+    field : float, optional
+        external magnetic field, by default 0
 
     Returns
     -------
@@ -96,10 +97,14 @@ def _run_sweeps(spins: np.ndarray, length_xy: int, beta: float, xs: np.ndarray, 
             yp = (y + 1) % length_xy
 
             energy_diff = (
-                - np.cos(new_theta - spins[xm, y]) + np.cos(initial_theta - spins[xm, y])
-                - np.cos(new_theta - spins[xp, y]) + np.cos(initial_theta - spins[xp, y])
-                - np.cos(new_theta - spins[x, ym]) + np.cos(initial_theta - spins[x, ym])
-                - np.cos(new_theta - spins[x, yp]) + np.cos(initial_theta - spins[x, yp])
+                - np.cos(new_theta - spins[xm, y]) - field * np.cos(new_theta)
+                + np.cos(initial_theta - spins[xm, y]) + field * np.cos(initial_theta)
+                - np.cos(new_theta - spins[xp, y]) - field * np.cos(new_theta)
+                + np.cos(initial_theta - spins[xp, y]) + field * np.cos(initial_theta)
+                - np.cos(new_theta - spins[x, ym]) - field * np.cos(new_theta)
+                + np.cos(initial_theta - spins[x, ym]) + field * np.cos(initial_theta)
+                - np.cos(new_theta - spins[x, yp]) - field * np.cos(new_theta)
+                + np.cos(initial_theta - spins[x, yp]) + field * np.cos(initial_theta)
             )
 
             exponent = -beta * energy_diff
@@ -151,7 +156,7 @@ def high_res_setup(batch: int = 0) -> Path:
 
 
 
-def low_res_setup(batch:int=0) -> Path:
+def low_res_setup(batch:int=0, fieldon: bool = False) -> Path:
     """Prepare the directory setup and parameter files of the low resolution simulation run.
 
     This run is meant to calculate observables. Therefore a certain number of 'blocks' are needed
@@ -174,9 +179,14 @@ def low_res_setup(batch:int=0) -> Path:
 
     temps = [0.5, 0.7, 0.8, 0.9, 1.0, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.5] # prevent weird floating point error in filenames
     try:
-        taus = pd.read_csv(results_dir/'tau_temp.txt', delimiter='\t')[['temp','mean']]
+        if fieldon:
+            filename = 'field_tau_temp.txt'
+            taus = pd.read_csv(results_dir/filename, delimiter='\t')[['temp','mean']]
+        else:
+            filename = 'tau_temp.txt'
+            taus = pd.read_csv(results_dir/filename, delimiter='\t')[['temp','mean']]
     except:
-        raise RuntimeError("Correlation times could not be loaded from 'results/tau_temp.txt'. Perhaps you forgot to run the high resolution scripts first?")
+        raise RuntimeError(f"Correlation times could not be loaded from {results_dir/filename}. Perhaps you forgot to run the high resolution scripts first?")
     taus_lowres = taus[taus['temp'].isin(temps)]['mean'].astype('int').reset_index(drop=True)
     sweeps = 22 * 16 * taus_lowres
     sample_interval = 0.25 * taus_lowres
@@ -202,3 +212,67 @@ def low_res_setup(batch:int=0) -> Path:
         json.dump(params, f, indent=2)
 
     return data_dir
+
+
+
+@njit
+def angle_diff(theta1, theta2):
+    """Calculate the difference between two angles, taking into account periodicity. Optimized for numba.
+    Parameters
+    ----------
+    theta1, theta2 : float
+        The two angles in radians.
+
+    Returns
+    -------
+    float
+        The difference between the two angles, normalized to the range [-π, π).
+    """
+    return np.arctan2(
+        np.sin(theta2 - theta1),
+        np.cos(theta2 - theta1)
+    )
+
+@njit
+def find_vortices(spins):
+    """Detect vortices and antivortices in XY model.
+
+    Parameters
+    ----------
+    spins : 2D ndarray
+        Spin angle field in radians.
+
+    Returns
+    -------
+    vortices : list of tuples
+        [(x, y, charge), ...]
+    """
+    L = spins.shape[0]
+
+    vortices = []
+
+    for i in range(L):
+        for j in range(L):
+
+            # periodic boundaries
+            ip = (i + 1) % L
+            jp = (j + 1) % L
+
+            t1 = spins[i,  j ]
+            t2 = spins[ip, j ]
+            t3 = spins[ip, jp]
+            t4 = spins[i,  jp]
+
+            winding = (
+                angle_diff(t1, t2)
+                + angle_diff(t2, t3)
+                + angle_diff(t3, t4)
+                + angle_diff(t4, t1)
+            )
+            
+            charge = round(winding / (2*np.pi))
+            
+            if charge != 0:
+                vortices.append((i, j, charge))
+
+    return vortices

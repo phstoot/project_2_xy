@@ -24,7 +24,7 @@ def warmup():
 
 def main(batch: int = 0):
     # setup
-    data_dir = utils.low_res_setup(batch)
+    data_dir = utils.low_res_setup(batch, fieldon=True)
     
     utils.section('XY model simulation suite')
     
@@ -42,16 +42,16 @@ def main(batch: int = 0):
     warmup()
     for ic in ics:
         for i in range(len(temps)):
-            sim = simul.MonteCarlo_XY(N, temps[i], start=f'{ic}', low_memory=low_memory)
+            sim = simul.MonteCarlo_XY(N, temps[i], start=f'{ic}', low_memory=low_memory, h=0.15)
             print(f'\nStarting sim: N = {N}, T = {temps[i]}, {ic} start, length = {sweeps[i]} sweeps...')
             sim.run(sweeps=sweeps[i], store=True, interval=sample_interval[i], abs=False)
             # np.save(data_dir/f'spins_{N}_T_{temps[i]}_hot.npy', np.array(hot.spins_hist)) # be careful, takes a lot of storage
-            np.save(data_dir/f'energy_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.e_hist))
-            np.save(data_dir/f'magn_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.magn_hist))
-            np.save(data_dir/f'v_dens_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.v_dens_hist))
+            np.save(data_dir/f'field_energy_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.e_hist))
+            np.save(data_dir/f'field_magn_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.magn_hist))
+            np.save(data_dir/f'field_v_dens_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.v_dens_hist))
     print('Done, bye')
 
 if __name__ == '__main__':
-    for batch in range(3): # as many batches as is needed
-        utils.section(f"Batch {batch}/2")
+    for batch in range(11,14): # as many batches as is needed
+        utils.section(f"Batch {batch-10}/3")
         main(batch)

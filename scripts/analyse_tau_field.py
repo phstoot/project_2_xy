@@ -1,10 +1,10 @@
 ###############################################
-# MILESTONE 1: estimate correlation time tau
+# EXTERNAL FIELD: estimate correlation time tau
 # This script loads the simulation data, 
 # processes it and estimates tau,
 # creates plots and stores results.
 ###############################################
-import os
+from importlib.resources import files
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -36,14 +36,13 @@ def plot_magnetization(data_dir, temps, discard, ics):
         ax.set_ylabel(r'$\langle|m|\rangle$ ($|M|/N^2$)')
         for ic in ics:
             try:
-                magn_hist = np.load(data_dir/f'magn_50_T_{temps[j]}_{ic}.npy')
+                magn_hist = np.load(data_dir/f'field_magn_50_T_{temps[j]}_{ic}.npy')
             except:
                 raise RuntimeError('No simulation results found.')
             
-            # ax.plot(magn_hist, label=f'{ic} start', alpha=0.7, linewidth=0.8)
-            m_abs = np.linalg.norm(magn_hist, axis=1)
-            ax.plot(m_abs, label=f'{ic} start', alpha=0.7, linewidth=0.8)
-            ax.set_xlim(0,len(magn_hist))
+            m = np.linalg.norm(magn_hist, axis=1)
+            ax.plot(m, label=f'{ic} start', alpha=0.7, linewidth=0.8)
+            ax.set_xlim(0,len(m))
             ax.set_ylim(0, 1)
 
             ax.axvline(discard[j], color='black')
@@ -89,14 +88,14 @@ def tau_pipeline(data_dir, results_dir, temps, discard, ics, plot=False):
 
         for i, ic in enumerate(ics):
             try:
-                data = np.load(data_dir/f'magn_50_T_{temps[j]}_{ic}.npy')
+                data = np.load(data_dir/f'field_magn_50_T_{temps[j]}_{ic}.npy')
             except:
                 raise RuntimeError('No simulation results found.')
             # calculate autocorrelation function
             m_abs = np.linalg.norm(data, axis=1)
             corr = autocorrelation(m_abs, discard[j])
-            corr_norm = corr / corr[0]
-            tau_guess = correlation_time(corr_norm)
+            corr = corr / corr[0]
+            tau_guess = correlation_time(corr)
 
             # prepare fit
             max_lim = int(3*tau_guess)
@@ -104,12 +103,13 @@ def tau_pipeline(data_dir, results_dir, temps, discard, ics, plot=False):
             t_curve = np.arange(0, len(corr)) 
             t_plot = np.arange(discard[j], discard[j] + len(corr)) # translate axis for plotting to account for burn in
             print(f"Fitting tau for T={temps[j]}, {ic} start, guess = {tau_guess:.2f}...")
-            
+
+
             # perform fit
             popt, pcov = sco.curve_fit(
                 autocorrelation_curve,
                 t_fit,
-                corr_norm[:max_lim],
+                corr[:max_lim],
                 p0=(1, tau_guess+10),
                 # bounds=([0.7, 0.1*tau_guess], [1.2, 5*tau_guess])
             )
@@ -121,7 +121,7 @@ def tau_pipeline(data_dir, results_dir, temps, discard, ics, plot=False):
             
             # plot
             if plot == True:
-                axs[i].plot(t_plot, corr_norm, label=f'{ic} start') 
+                axs[i].plot(t_plot, corr, label=f'{ic} start') 
                 axs[i].plot(t_plot, fittedcurve, label=fr'$\tau = ${popt[1]:.3g} ', linestyle='--')
                 axs[i].set_title(r'Autocorrelation function $\chi(t)$')
             
@@ -142,7 +142,7 @@ def tau_pipeline(data_dir, results_dir, temps, discard, ics, plot=False):
             plt.show()
             plt.close('all')
 
-    with open(results_dir/f"tau_results_50_{batch}.txt", "w") as out:
+    with open(results_dir/f"field_tau_results_50_{batch}.txt", "w") as out:
         out.write("temp start tau tau_variance\n")
         for i, T in enumerate(temps):
             for ic in ics:
@@ -158,7 +158,7 @@ def final_tau():
     This is the final part of the methods: we take the mean of the sample for every tau, and 
     report the standard deviation as error. 
     """
-    files = glob.glob(str(root / "results/high_res*/tau_results_50_*.txt"))
+    files = glob.glob(str(root / "results/high_res*/field_tau_results_50_*.txt"))
     if len(files) == 0:
         raise RuntimeError("No files matched glob pattern.")
     try:
@@ -167,9 +167,9 @@ def final_tau():
         raise RuntimeError('No correlation times found.')
     
     grouped = df.groupby(["temp"])["tau"].agg(["mean", "std"]).reset_index()
-    grouped.to_csv(str(root / "results/tau_temp.txt"), sep="\t", index=False)
+    grouped.to_csv(str(root / "results/field_tau_temp.txt"), sep="\t", index=False)
 
-    tau_final = pd.read_csv(str(root / "results/tau_temp.txt"), sep='\t')
+    tau_final = pd.read_csv(str(root / "results/field_tau_temp.txt"), sep='\t')
     fig = plt.figure(figsize=(7,3.5))
     plt.errorbar(
         tau_final['temp'],
@@ -189,11 +189,11 @@ def final_tau():
     plt.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
     plt.ylabel(r'$\tau$ (lattice sweeps)', size=14)
     plt.xlabel(r'$T$', size=14)
-    plt.ylim(-0.1*max(tau_final['mean']), 1.5*max(tau_final['mean']))
+    plt.ylim(0, 1.5* max(tau_final['mean']))
     plt.axhline(0, color='grey', linestyle=':', alpha=0.7)
     plt.xlim(0.4, 2.6)
     plt.tight_layout()
-    plt.savefig(str(root / "results/tau_temp.pdf"))
+    plt.savefig(str(root / "results/field_tau_temp.pdf"))
     plt.show()
 
 
@@ -220,7 +220,7 @@ def main(batch):
     ics = params['ics']
     N = params['N']
 
-    # # check for convergence
+    # check for convergence
     plot_magnetization(data_dir, temps, discard, ics)
 
     # calculate tau for this batch
@@ -228,7 +228,6 @@ def main(batch):
 
 
 if __name__ == '__main__':
-    for batch in range(4): # check if same in simulate_tau.py
+    for batch in range(11,15): # check if same in simulate_tau_field.py
         main(batch)
     final_tau()
-    # CHANge  LATER

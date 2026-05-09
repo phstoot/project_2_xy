@@ -18,23 +18,32 @@ def warmup():
 
 
 warmup()
-test = simul.MonteCarlo_XY(40, 0.9,start='hot', low_memory=True)
-coldtest = simul.MonteCarlo_XY(40, 1, start='cold', low_memory=True)  
+# test = simul.MonteCarlo_XY(40, 0.9,start='hot', low_memory=True)
+coldtest = simul.MonteCarlo_XY(40, 1.4, start='cold', low_memory=True, h=0)  
 
-test.static_plot()
+# test.static_plot()
 coldtest.static_plot()
 
-sweeps = 10000 # total of 2 500 000 steps
+sweeps = 20000 # total of 2 500 000 steps
 
 # test.static_image()
 # coldtest.static_plot()
 
 # test.run(sweeps=sweeps)
 
-# coldtest.run(sweeps=sweeps, interval=100)
+coldtest.run(sweeps=sweeps, interval=100)
 # # test.static_plot()
-# coldtest.static_plot()
+coldtest.static_plot()
+coldtest.run(sweeps=2, interval=100)
+coldtest.static_plot()
 
+vortices = utils.find_vortices(coldtest.spins)
+
+rho_v, n_vortices, n_antivortices = coldtest._calculate_vortex_density()
+print(f"Vortex density: {rho_v:.4f} (n_vortices = {n_vortices}, n_antivortices = {n_antivortices})")
+print(coldtest._calculate_vortex_density()[0])
+
+print(coldtest.v_dens_hist)
 
 
 # test.run_live(sweeps=sweeps, low_memory=False, save=False, show=True)
@@ -66,17 +75,17 @@ sweeps = 10000 # total of 2 500 000 steps
 
 
 
-overflowtemps = np.array([0.1, 0.07, 0.06, 0.05])
+# overflowtemps = np.array([0.1, 0.07, 0.06, 0.05])
 
-beta = 1 / overflowtemps
+# beta = 1 / overflowtemps
 
-dE = 8
+# dE = 8
 
-def testflow(e):
-    return np.exp(e)
+# def testflow(e):
+#     return np.exp(e)
 
-exponents= np.linspace(0, 800, 61)
+# exponents= np.linspace(0, 800, 61)
 
-e_hist = []
-for state in test.spins_hist:
-    e_hist.append(analysis.energy(state, 50))
+# e_hist = []
+# for state in test.spins_hist:
+#     e_hist.append(analysis.energy(state, 50))

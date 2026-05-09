@@ -6,7 +6,7 @@ from matplotlib import animation
 from tqdm import tqdm
 # import sys
 # sys.path.append('project_2_xy/src')
-from src.utils import _run_sweeps
+from src.utils import _run_sweeps, find_vortices
 import src.analysis as analysis
 
 class MonteCarlo_XY:
@@ -18,7 +18,8 @@ class MonteCarlo_XY:
             temperature : float = 1,
             k_B : float = 1,
             start: str = 'cold', # either cold or hot
-            low_memory: bool = False
+            low_memory: bool = False,
+            h: float = 0
             ):
         """
         Monte Carlo XY Model simulation
@@ -44,6 +45,10 @@ class MonteCarlo_XY:
             boltzmann constant, by default 1
         start : str, optional
             initial conditions, either 'hot' (random spins) or 'cold' (aligned spins), by default 'cold'
+        low_memory : bool, optional
+            if code is run memory-intensive or slower, by default false
+        h : float, optional
+            external magnetic field, by default 0
 
         Main methods
         ------------
@@ -64,11 +69,12 @@ class MonteCarlo_XY:
         self._status = 'initialized'
         self.start = start
         self.low_memory = low_memory
-        
+        self.h = h
         self.beta = 1 / (self.k_B * self.temperature)
         self.spins_hist: list = []
         self.magn_hist: list = []
         self.e_hist: list = []
+        self.v_dens_hist: list = []
         self.saved_index_hist: list = [] # IF NOT USED, REMOVE LATER
         self.stepcount: int = 0
         
@@ -81,7 +87,17 @@ class MonteCarlo_XY:
             )
 
     def _init_spins(self, start):
-        """Private method to initialize XY model with either random spins (start='hot') or aligned spins (start='cold'), or ...
+        """Private method to initialize XY model with either random spins (start='hot') or aligned spins (start='cold'), or some funky version.
+        
+        Parameters
+        ----------
+        start : str
+            Initial conditions for the spins ('hot', 'cold', or 'funky')
+
+        Returns
+        -------
+        spins : np.ndarray
+            Initial spin configuration
         """
         spins = np.zeros((self.length_xy, self.length_xy))
         if start == 'hot':
@@ -169,6 +185,23 @@ class MonteCarlo_XY:
         ax.margins(0)
         ax.set_xticks([])
         ax.set_yticks([]) 
+        
+        vortices = find_vortices(self.spins)
+        vx = []
+        vy = []
+        avx = []
+        avy = []
+        for x, y, q in vortices:
+            if q == 1:
+                vx.append(y)
+                vy.append(x)
+            elif q == -1:
+                avx.append(y)
+                avy.append(x)
+        
+        vortex_scatter = ax.scatter(vx, vy, color='darkgrey', marker='o', s=100, label='vortex')
+        antivortex_scatter = ax.scatter(avx, avy, color='black', marker='o', s=100, label='antivortex')
+        plt.legend()
         plt.tight_layout()
         plt.show()
     
@@ -182,7 +215,25 @@ class MonteCarlo_XY:
             clim=[0, 2*np.pi], 
             interpolation='nearest' # no kernel
         )
+        
+        vortices = find_vortices(self.spins)
+        vx = []
+        vy = []
+        avx = []
+        avy = []
+        for x, y, q in vortices:
+            if q == 1:
+                vx.append(y)
+                vy.append(x)
+            elif q == -1:
+                avx.append(y)
+                avy.append(x)
+        
+        vortex_scatter = ax.scatter(vx, vy, color='darkgrey', marker='o', s=100, label='vortex')
+        antivortex_scatter = ax.scatter(avx, avy, color='black', marker='o', s=100, label='antivortex')
+        
         plt.title(f'XY model\n $T$ = {self.temperature}, $J$ = 1, $k_B$ = 1, {self.start} start')
+        plt.legend()
         ax.set_xticks([])
         ax.set_yticks([]) 
         
@@ -216,7 +267,7 @@ class MonteCarlo_XY:
                 nx = (x + dx) % self.length_xy
                 ny = (y + dy) % self.length_xy
                 neighbour_theta = self.spins[nx, ny]
-                energy_diff += -np.cos(delta - neighbour_theta) + np.cos(initial_theta - neighbour_theta) # dE = final - initial
+                energy_diff += -np.cos(delta - neighbour_theta) - self.h * np.cos(delta) + np.cos(initial_theta - neighbour_theta)  + self.h * np.cos(initial_theta) # dE = final - initial
                 
         # Acceptance stage:
         exponent = min(0, -self.beta * energy_diff) # prevent overflow error by choosing before evaluating exponent
@@ -248,6 +299,8 @@ class MonteCarlo_XY:
             whether to store history arrays
         interval : int, optional, default 10
             sample to history arrays in interval, counted in sweeps
+        abs : bool, optional, default False
+            whether to take absolute value when calculating the magnetization, by default False.
         """
         size = sweeps * self.length_xy**2
         rng = np.random.default_rng()
@@ -263,6 +316,7 @@ class MonteCarlo_XY:
                 self.magn_hist.append(self._calculate_magnetization(abs=abs))
                 self.e_hist.append(analysis.energy(self.spins, self.length_xy))
                 self.spins_hist.append(self.spins.copy())
+                self.v_dens_hist.append(self._calculate_vortex_density()[0])
             batch = min(interval, sweeps - i)
             
             if self.low_memory:
@@ -272,14 +326,14 @@ class MonteCarlo_XY:
                 accepts = rng.random(size=batch * self.length_xy**2)
                 _run_sweeps(self.spins, self.length_xy, self.beta,
                             xs, ys, deltas, accepts,
-                            n_sweeps=batch)
+                            n_sweeps=batch, field=self.h)
                 
             else:
                 start = i * self.length_xy**2
                 end = (i + batch) * self.length_xy**2
                 _run_sweeps(self.spins, self.length_xy, self.beta,
                             xs[start:end], ys[start:end], deltas[start:end], accepts[start:end], # type: ignore
-                            n_sweeps=batch)
+                            n_sweeps=batch, field=self.h)
     
     def _update_animation(self,frame: int, store: bool = True):     
         """Update function for live animation. Called by FuncAnimation for every frame.
@@ -301,7 +355,8 @@ class MonteCarlo_XY:
             self.magn_hist.append(self._calculate_magnetization())
             self.e_hist.append(self._calculate_energy())
             self.spins_hist.append(self.spins.copy())
-             
+            self.v_dens_hist.append(self._calculate_vortex_density()[0])
+
         if self.low_memory:
             xs = self.rng.integers(0, self.length_xy, size=self.batch_interval *self.length_xy**2, dtype=np.int64)
             ys = self.rng.integers(0, self.length_xy, size=self.batch_interval *self.length_xy**2, dtype=np.int64)
@@ -316,7 +371,7 @@ class MonteCarlo_XY:
 
         _run_sweeps(self.spins, self.length_xy, self.beta,
                         xs, ys, deltas, accepts,
-                        n_sweeps=self.batch_interval)
+                        n_sweeps=self.batch_interval, field=self.h)
         
         self.image.set_array(self.spins)
         self.title.set_text(f'Sweep {self.batch_interval *(frame+1)} | T = {self.temperature} | {self.start} start')
@@ -427,7 +482,30 @@ class MonteCarlo_XY:
             return np.array([Mx, My]) / self.length_xy**2
         else:
             raise ValueError('Please choose abs=Bool')
-    
+        
+    def _calculate_vortex_density(self):
+        """Calculate vortex density from a grid of spins. 
+        Uses the find_vortices function from utils to identify vortices and antivortices.
+
+        Parameters
+        ----------
+        none
+
+        Returns
+        -------
+        vortex_density : float
+            Vortex density, i.e. the number of vortices per spin.
+        n_vortices : int
+            Number of vortices.
+        n_antivortices : int
+            Number of antivortices.
+        """
+        vortices = find_vortices(self.spins)
+        n_vortices = sum(v[2] == 1 for v in vortices)
+        n_antivortices = sum(v[2] == -1 for v in vortices)
+        vortex_density = (n_vortices + n_antivortices) / self.length_xy**2
+        return vortex_density, n_vortices, n_antivortices
+
     # def _calculate_autocorrelation(self, t):
     #     pass
     

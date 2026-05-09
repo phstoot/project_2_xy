@@ -10,7 +10,8 @@ This project implements a Monte Carlo simulation of the 2D XY model on a square 
 
 The code is structured as a small Python package with separate modules, along with scripts to reproduce the results used in the report.
 
-The code includes an animation feature, and some example animations are included in example_gifs
+The code includes an animation feature, and some example animations are included in example_gifs.
+
 
 ---
 
@@ -50,6 +51,7 @@ We simulate the classical 2D XY model with the following choices:
 
 * The simulation is accelerated using **Numba JIT compilation**
 * Random updates are performed per lattice site (Monte Carlo sweeps)
+* IMPORTANT: A simulation can be initialized with low_memory = True. This is slightly slower, but less memory-intensive.
 * 'start' corresponds to a 'cold' or 'hot' start, respectively starting with all spins aligned or a random configuration.
 * Magnetization and energy are recorded over time and post-processed using blocking/statistical analysis
 * Individual states can be visualised using instance.static_image()
@@ -88,22 +90,28 @@ To reproduce the results shown in the report:
 ```bash
 python scripts/simulate_tau.py
 python scripts/analyse_tau.py
+python scripts/simulate_tau_field.py
+python scripts/analyse_tau_field
 ```
 
 The first script generates raw data in the `data/` directory.
 The second script then calculates the correlation times from this data, which are needed for
 running the second simulation script, and generates output in the `results/` directory.
+The same is repeated for the presence of an external field.
 
 ### 2. Run second simulation and calculate observables
 
 ```bash
 python scripts/simulate_observables.py
 python scripts/analyse_observables.py
+python scripts/simulate_observables_field.py
+python scripts/analyse_observables_field.py
 ```
 
 The third script generates raw data in the `data/` directory, with the simulation setup based on the 
 best-fit values for tau from the previous analysis.
 The fourth script processes the data and produces final results and plots in the `results/` directory.
+The same is repeated for the presence of an external field.
 
 > Note: Full simulations may take significant time depending on the number of sweeps and batches. According to our tests and using the Numba implementation, a full suite with runs of ~10^5 sweeps for 14 temperatures should not take longer than ~15 minutes. 
 

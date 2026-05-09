@@ -34,7 +34,7 @@ batch = 0
 # 1: for the first two, we use the high resolution data
 ################################################
 
-def e_m_pipeline():
+def e_m_rho_pipeline():
     """Pipeline function to calculate energy and magnetization per spin. Only one batch of simulations is needed.
     """
     # loop through runs
@@ -47,7 +47,7 @@ def e_m_pipeline():
         rho_stds = []
         for i, T in enumerate(temps):
             try:
-                e_full = np.load(f'data/high_res_0/energy_50_T_{T}_{ic}.npy')
+                e_full = np.load(f'data/high_res_11/field_energy_50_T_{T}_{ic}.npy')
             except:
                 raise RuntimeError('No simulation results (energy) found.')
             e_data = e_full[discard[i]:]
@@ -56,43 +56,42 @@ def e_m_pipeline():
             e_stds.append(analysis.independend_std(e_data, int(taus['mean'][i])))
 
             try:
-                m_full = np.load(f'data/high_res_0/magn_50_T_{T}_{ic}.npy')
+                m_full = np.load(f'data/high_res_11/field_magn_50_T_{T}_{ic}.npy')
             except:
                 raise RuntimeError('No simulation results (magnetization) found.')
             m_data = m_full[discard[i]:]
             m_means.append(np.mean(m_data))
             m_stds.append(analysis.independend_std(m_data, int(taus['mean'][i])))
+            print(T, np.mean(m_data))
             
             try:
-                rho_full = np.load(f'data/high_res_0/v_dens_50_T_{T}_{ic}.npy')
+                rho_v_full = np.load(f'data/high_res_11/field_v_dens_50_T_{T}_{ic}.npy')
             except:
                 raise RuntimeError('No simulation results (vortex density) found.')
-            rho_data = rho_full[discard[i]:]
-            rho_means.append(np.mean(rho_data))
-            rho_stds.append(analysis.independend_std(rho_data, int(taus['mean'][i])))
-            
-            print(T, np.mean(m_data))
+            rho_v_data = rho_v_full[discard[i]:]
+            rho_means.append(np.mean(rho_v_data))
+            rho_stds.append(analysis.independend_std(rho_v_data, int(taus['mean'][i])))
+
         e_df = pd.DataFrame({
         "temp": temps,
         "mean": e_means,
         "std": e_stds
         })
-        e_df.to_csv(f'results/high_res_0/e_temp_{ic}.txt', sep="\t", index=False)
+        e_df.to_csv(f'results/high_res_11/field_e_temp_{ic}.txt', sep="\t", index=False)
         
         m_df = pd.DataFrame({
         "temp": temps,
         "mean": m_means,
         "std": m_stds
         })
-        m_df.to_csv(f'results/high_res_0/m_temp_{ic}.txt', sep="\t", index=False)
+        m_df.to_csv(f'results/high_res_11/field_m_temp_{ic}.txt', sep="\t", index=False)
 
         rho_df = pd.DataFrame({
         "temp": temps,
         "mean": rho_means,
         "std": rho_stds
         })
-        rho_df.to_csv(f'results/high_res_0/rho_temp_{ic}.txt', sep="\t", index=False)
-
+        rho_df.to_csv(f'results/high_res_11/field_rho_temp_{ic}.txt', sep="\t", index=False)
 
 ################################################################################
 # 2: for the last two, we use the low resolution data and the block approach. 
@@ -108,8 +107,8 @@ def x_c_pipeline():
         heat_err = []
         for i, T in tqdm(enumerate(temps)):
             try:
-                magn_full = np.load(data_dir/f'magn_50_T_{T}_{ic}.npy') * 50 # convert to total
-                energy_full = np.load(data_dir/f'energy_50_T_{T}_{ic}.npy') * 2500 # convert to total
+                magn_full = np.load(data_dir/f'field_magn_50_T_{T}_{ic}.npy') * 50 # convert to total
+                energy_full = np.load(data_dir/f'field_energy_50_T_{T}_{ic}.npy') * 2500 # convert to total
             except:
                 raise RuntimeError('no results found')
 
@@ -133,7 +132,7 @@ def x_c_pipeline():
             m_trimmed = magn_arr[:n_blocks * block_size[i]]
             e_trimmed = energy_arr[:n_blocks * block_size[i]]
             
-            m_blocks = m_trimmed.reshape(n_blocks, block_size[i],2) 
+            m_blocks = m_trimmed.reshape(n_blocks, block_size[i], 2) 
             e_blocks = e_trimmed.reshape(n_blocks, block_size[i]) 
 
             # calculate heat and susc per block
@@ -156,14 +155,14 @@ def x_c_pipeline():
             "mean": susc_means,
             "err": susc_err
             })
-        susc_df.to_csv(results_dir/f'susc_temp_{ic}.txt', sep="\t", index=False)
+        susc_df.to_csv(results_dir/f'field_susc_temp_{ic}.txt', sep="\t", index=False)
 
         heat_df = pd.DataFrame({
             "temp": temps,
             "mean": heat_means,
             "err": heat_err
             })
-        heat_df.to_csv(results_dir/f'heat_temp_{ic}.txt', sep="\t", index=False)
+        heat_df.to_csv(results_dir/f'field_heat_temp_{ic}.txt', sep="\t", index=False)
 
 
 ##### combine batches for magnetic susceptibility – needs more precision
@@ -175,7 +174,7 @@ def final_magn_susc(n_batches):
 
     all_dfs = []
     for ic in ics:
-        for b in range(n_batches):
+        for b in range(11, 11 + n_batches):
             try:
                 df = pd.read_csv(f'results/low_res_{b}/susc_temp_{ic}.txt', sep='\t')
             except:
@@ -184,7 +183,7 @@ def final_magn_susc(n_batches):
 
     combined = pd.concat(all_dfs)
     final = combined.groupby('temp').apply(utils.combine_measurements).reset_index()
-    final.to_csv(f'results/susc_temp_final.txt', sep='\t', index=False)
+    final.to_csv(f'results/field_susc_temp_final.txt', sep='\t', index=False)
 
 
 
@@ -198,8 +197,8 @@ def magnet_plot():
     """Generate plot for magnetization and magnetic susceptibility
     """
     try:
-        m_df = pd.read_csv('results/high_res_0/m_temp_cold.txt', sep='\t') 
-        susc_df = pd.read_csv(f'results/susc_temp_final.txt', sep='\t')
+        m_df = pd.read_csv('results/high_res_11/field_m_temp_cold.txt', sep='\t') 
+        susc_df = pd.read_csv(f'results/field_susc_temp_final.txt', sep='\t')
     except:
         raise RuntimeError('no results found')
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6,5), sharex=True)
@@ -242,14 +241,15 @@ def magnet_plot():
     ax2.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
     plt.tight_layout()
     plt.subplots_adjust(hspace=0)
-    plt.savefig(f'results/magn_final.pdf')
+    plt.savefig(f'results/field_magn_final.pdf')
     # plt.show()
+
 
 def vortex_density_plot():
     """Generate plot for vortex density
     """
     try:
-        rho_df = pd.read_csv('results/high_res_0/rho_temp_cold.txt', sep='\t') 
+        rho_df = pd.read_csv('results/high_res_11/field_rho_temp_cold.txt', sep='\t') 
     except:
         raise RuntimeError('no results found')
     fig = plt.figure(figsize=(6,4))
@@ -273,7 +273,7 @@ def vortex_density_plot():
     plt.xlim(0.4, 2.6)
     plt.ylim(bottom=0)
     plt.tight_layout()
-    plt.savefig(f'results/vortex_density.pdf')
+    plt.savefig(f'results/field_vortex_density.pdf')
     # plt.show()
 
 
@@ -281,8 +281,8 @@ def energy_plot():
     """Generate plot for energy and specific heat
     """
     try:
-        e_df = pd.read_csv('results/high_res_0/e_temp_cold.txt', sep='\t')
-        heat_df = pd.read_csv(f'results/low_res_1/heat_temp_cold.txt', sep='\t') # for heat, one batch is precise enough
+        e_df = pd.read_csv('results/high_res_11/field_e_temp_cold.txt', sep='\t')
+        heat_df = pd.read_csv(f'results/low_res_11/field_heat_temp_cold.txt', sep='\t') # for heat, one batch is precise enough
     except:
         raise RuntimeError('no results found')
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6,5), sharex=True)
@@ -324,7 +324,7 @@ def energy_plot():
     ax2.tick_params(direction='in', which='both', top=True, right=True, length=5, width=1)
     plt.tight_layout()
     plt.subplots_adjust(hspace=0)
-    plt.savefig(f'results/energy_final.pdf')
+    plt.savefig(f'results/field_energy_final.pdf')
     # plt.show()
 
 
@@ -354,15 +354,15 @@ if __name__ == '__main__':
     N = params['N']
 
     try:
-        taus = pd.read_csv('results/tau_temp.txt', delimiter='\t')[['temp','mean']]
+        taus = pd.read_csv('results/field_tau_temp.txt', delimiter='\t')[['temp','mean']]
     except:
         raise RuntimeError('no results found')
 
-    e_m_pipeline()
+    e_m_rho_pipeline()
 
 
     # X_m and C -> low res, several batches are needed
-    for batch in range(3):
+    for batch in range(11,14): # check if same in simulate_observables_field.py
         # manage paths
         data_dir = root / f'data/low_res_{batch}'
         results_dir = root / f'results/low_res_{batch}'

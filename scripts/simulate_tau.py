@@ -11,6 +11,8 @@ import src.utils as utils
 import src.analysis as analysis
 import json
 
+low_memory = True # If True, code is slightly slower but less memory-intensive.
+
 def warmup():
     # for numba
     dummy_spins = np.zeros((4, 4))
@@ -39,11 +41,13 @@ def main(batch: int = 0):
     warmup()
     for ic in ics:
         for i in range(len(temps)):
-            sim = simul.MonteCarlo_XY(N, temps[i], start=f'{ic}')
+            sim = simul.MonteCarlo_XY(N, temps[i], start=f'{ic}', low_memory=low_memory)
             print(f'\nStarting sim: N = {N}, T = {temps[i]}, {ic} start, length = {sweeps[i]} sweeps...')
-            sim.run(sweeps=sweeps[i], store=False, interval=sample_interval[i])
+            sim.run(sweeps=sweeps[i], store=True, interval=sample_interval[i], abs=False)
             # np.save(data_dir/f'spins_{N}_T_{temps[i]}_hot.npy', np.array(hot.spins_hist)) # be careful, takes a lot of storage
-            np.save(data_dir/f'magn_{N}_T_{temps[i]}_hot.npy', np.array(sim.magn_hist)) # only magnetization correlation time is estimated
+            np.save(data_dir/f'magn_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.magn_hist)) 
+            np.save(data_dir/f'energy_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.e_hist)) 
+            np.save(data_dir/f'v_dens_{N}_T_{temps[i]}_{ic}.npy', np.array(sim.v_dens_hist))
     print('Done, bye')
 
 if __name__ == '__main__':

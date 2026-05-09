@@ -24,6 +24,18 @@ def autocorrelation(m, discard: int):
     X : array
         autocorrelation function
     """
+    
+    # m = np.asarray(m)
+
+    # m_mean = np.mean(m)
+    # m = m - m_mean
+
+    # N = len(m)
+
+    # corr = np.zeros(N)
+
+    # for t in range(N):
+    #     corr[t] = np.mean(m[:N-t] * m[t:])
     m = m[discard:]
     t_max = len(m)
 
@@ -32,7 +44,6 @@ def autocorrelation(m, discard: int):
     for t in range(len(m)):
         factor = 1 / (t_max - t)
         X[t] = factor * np.sum( m[0:(t_max-t)] * m[t:t_max] ) - factor * np.sum( m[0:(t_max-t)] ) * factor * np.sum( m[t:t_max] )
-
     return X
 
 def correlation_time(x):
@@ -103,6 +114,18 @@ def energy(spins, length_xy):
 def independend_std(array, tau):
     """Calculate standard deviation of the mean for a correlated sample. Takes correlation time tau as input and corrects for 
     statistically dependent samples.
+    
+    Parameters    
+    ----------
+    array : array
+        The array of correlated samples.
+    tau : float
+        The correlation time.
+
+    Returns
+    -------
+    float
+        The corrected standard deviation of the mean.
     """
     n_independent = len(array) / (2*tau)
     std_corrected = np.std(array) / np.sqrt(n_independent)
@@ -111,6 +134,22 @@ def independend_std(array, tau):
 def magn_susc(magn_arr, temp, k_b, length_xy):
     """Calculate magnetic susceptibility from an array of sweeps. Important: use the non-absolute values of magnetization,
     stored as a 2D array [Mx, My] which is here needed as input.
+    
+    Parameters    
+    ----------
+    magn_arr : array
+        2D array of magnetization history, with columns Mx and My (not absolute values)
+    temp : float
+        Temperature
+    k_b : float
+        Boltzmann constant
+    length_xy : int
+        Size of the grid
+    
+    Returns
+    -------
+    float
+        The magnetic susceptibility.
     """
     # M2 = Mx**2 + My**2
     if not (magn_arr.ndim == 2 and magn_arr.shape[1] == 2):
@@ -119,4 +158,22 @@ def magn_susc(magn_arr, temp, k_b, length_xy):
         return (1 / (temp * k_b * length_xy**2)) * (np.var(magn_arr[:,0]) + np.var(magn_arr[:,1]))
 
 def specific_heat(energy_arr, temp, k_b, length_xy):
+    """Calculate specific heat from an array of energy values.
+    
+    Parameters
+    ----------
+    energy_arr : array
+        Array of energy values.
+    temp : float
+        Temperature.
+    k_b : float
+        Boltzmann constant.
+    length_xy : int
+        Size of the grid.
+
+    Returns
+    -------
+    float
+        The specific heat.
+    """
     return (1 / (temp**2 * k_b * length_xy**2)) * np.var(energy_arr)
